@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 import torch
 from PIL import Image
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -151,6 +151,30 @@ def infer(req: InferRequest):
             "specialist_role": "Bi-temporal Change Detection & Reasoning"
         }
     }
+
+
+@app.post("/analyze")
+async def analyze(
+    image_time1: UploadFile = File(...),
+    image_time2: UploadFile = File(...),
+    prompt: str = Form("What changed between the two images?")
+):
+    try:
+        content_t1 = await image_time1.read()
+        content_t2 = await image_time2.read()
+        b64_t1 = base64.b64encode(content_t1).decode("utf-8")
+        b64_t2 = base64.b64encode(content_t2).decode("utf-8")
+
+        result = run_bitemporal_vqa([b64_t1, b64_t2], prompt)
+        return {
+            "answer": result["answer"],
+            "confidence": result["confidence"],
+            "specialist": "specialist_b",
+            "task_type": "change_vqa"
+        }
+    except Exception as e:
+        logger.error(f"Error processing change VQA: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
