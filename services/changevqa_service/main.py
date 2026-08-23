@@ -90,7 +90,7 @@ def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
     img_t1 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t1))).convert("RGB")
     img_t2 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t2))).convert("RGB")
     
-    formatted_prompt = f"Compare Image 1 (Time 1) and Image 2 (Time 2). Answer concisely in 1-5 words: {prompt}"
+    formatted_prompt = f"Analyze the bi-temporal satellite pair. Image 1 is Time 1 (Before) and Image 2 is Time 2 (After). Describe in detail what changed from Time 1 to Time 2 over time: {prompt}"
     
     messages = [
         {
@@ -109,7 +109,7 @@ def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
     inputs = processor(text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt").to(device)
     
     with torch.no_grad():
-        generated_ids = model.generate(**inputs, max_new_tokens=32)
+        generated_ids = model.generate(**inputs, max_new_tokens=256)
         generated_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
