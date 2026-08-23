@@ -40,6 +40,7 @@ class AgentState(TypedDict):
     query: str
     images: List[str]
     metadata: Dict[str, Any]
+    analysis_mode: str
     task_type: str
     input_modality: str
     validation_passed: bool
@@ -223,8 +224,14 @@ def combine_outputs(state: AgentState) -> AgentState:
     avg_conf = sum(confs) / max(1, len(confs))
 
     # Pass raw output through Gemini Natural Language Synthesis Layer
-    logger.info("Synthesizing raw specialist output into natural language via Gemini API...")
-    natural_answer = synthesize_with_gemini(query=query, raw_answer=raw_combined, task_type=task_type)
+    logger.info(f"Synthesizing raw specialist output into natural language via Gemini API (Mode: {state.get('analysis_mode', 'quick')})...")
+    natural_answer = synthesize_with_gemini(
+        query=query, 
+        raw_answer=raw_combined, 
+        task_type=task_type,
+        images_b64=state.get("images", []),
+        analysis_mode=state.get("analysis_mode", "quick")
+    )
 
     state["final_answer"] = natural_answer
     state["final_confidence"] = round(avg_conf, 3)
@@ -238,6 +245,7 @@ def log_execution(state: AgentState) -> AgentState:
     
     trace = {
         "task_type": state["task_type"],
+        "analysis_mode": state.get("analysis_mode", "quick"),
         "input_modality": state["input_modality"],
         "images_received": len(state.get("images", [])),
         "validation_passed": state.get("validation_passed", True),
@@ -284,11 +292,17 @@ def create_satquery_orchestrator():
 orchestrator_graph = create_satquery_orchestrator()
 
 
-def run_orchestrator(query: str, images: List[str], metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def run_orchestrator(
+    query: str, 
+    images: List[str], 
+    analysis_mode: str = "quick",
+    metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     initial_state: AgentState = {
         "query": query,
         "images": images,
         "metadata": metadata or {},
+        "analysis_mode": analysis_mode,
         "task_type": "",
         "input_modality": "",
         "validation_passed": True,
@@ -310,6 +324,7 @@ def run_orchestrator(query: str, images: List[str], metadata: Optional[Dict[str,
         "answer": final_state["final_answer"],
         "confidence": final_state["final_confidence"],
         "task_type": final_state["task_type"],
+        "analysis_mode": final_state.get("analysis_mode", "quick"),
         "evidence_image_base64": final_state["evidence_image_base64"],
         "execution_trace": final_state["execution_trace"]
     }

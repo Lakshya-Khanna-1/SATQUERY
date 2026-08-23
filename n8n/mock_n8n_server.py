@@ -59,9 +59,18 @@ async def webhook_satquery(request: Request):
             return Response(content=resp.content, status_code=resp.status_code, media_type="application/json")
         except Exception as e:
             logger.warning(f"Connection error to orchestrator (attempt {attempt+1}/{max_retries}): {e}")
-            if attempt == max_retries - 1:
-                raise HTTPException(status_code=502, detail=f"Failed to reach orchestrator after retry: {str(e)}")
-            time.sleep(1.0)
+@app.post("/generate-pdf")
+async def webhook_pdf(request: Request):
+    payload = await request.json()
+    logger.info("Received PDF generation request on n8n webhook (POST /generate-pdf). Forwarding to orchestrator...")
+
+    pdf_url = ORCHESTRATOR_URL.replace("/query", "/generate-pdf")
+    try:
+        resp = requests.post(pdf_url, json=payload, timeout=60)
+        return Response(content=resp.content, status_code=resp.status_code, media_type="application/pdf")
+    except Exception as e:
+        logger.warning(f"Connection error during PDF generation: {e}")
+        raise HTTPException(status_code=502, detail=f"PDF proxy error: {str(e)}")
 
 
 if __name__ == "__main__":

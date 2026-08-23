@@ -1,9 +1,10 @@
 """
-SatQuery AI — Orchestrator API (FastAPI)
+SatQuery AI — Multi-Agent Orchestrator API (FastAPI)
 Port: 8000
 SIH 2026 (PS 26167)
 
-Exposes POST /query endpoint wrapping the LangGraph Multi-Agent State Machine.
+Exposes POST /query endpoint wrapping the LangGraph Multi-Agent State Machine
+and POST /generate-pdf for automatic report generation.
 """
 
 import os
@@ -12,12 +13,13 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from orchestrator.graph import run_orchestrator
+from orchestrator.pdf_generator import generate_satquery_pdf
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("OrchestratorAPI")
@@ -38,9 +40,17 @@ app.add_middleware(
 
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., description="Natural language user query")
+    query: Optional[str] = Field("Detailed geospatial observation analysis", description="Natural language user query")
     images: List[str] = Field(..., description="List of 1 or 2 base64 encoded satellite images")
+    analysis_mode: Optional[str] = Field("quick", description="Analysis mode: 'quick' (1-2 sentences) or 'deep' (5+ lines)")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Optional metadata (CRS, bounds, sensor)")
+
+
+class PDFRequest(BaseModel):
+    images: List[str] = Field(..., description="List of base64 images")
+    query: Optional[str] = Field("Automatic Comprehensive Geospatial PDF Intelligence Report", description="Query or report title")
+    analysis_mode: Optional[str] = Field("deep", description="Mode for PDF report (defaults to deep)")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 @app.get("/health")
@@ -55,21 +65,57 @@ def health():
 
 @app.post("/query")
 def process_query(req: QueryRequest):
-    if not req.query or not req.query.strip():
-        raise HTTPException(status_code=400, detail="Query string cannot be empty.")
+    prompt = req.query or "Detailed geospatial observation analysis"
     if not req.images or len(req.images) == 0:
         raise HTTPException(status_code=400, detail="At least one satellite image is required.")
 
     try:
         result = run_orchestrator(
-            query=req.query,
+            query=prompt,
             images=req.images,
+            analysis_mode=req.analysis_mode or "quick",
             metadata=req.metadata
         )
         return result
     except Exception as e:
         logger.error(f"Orchestration failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Orchestration error: {str(e)}")
+
+
+@app.post("/generate-pdf")
+def generate_pdf_report(req: PDFRequest):
+    if not req.images or len(req.images) == 0:
+        raise HTTPException(status_code=400, detail="At least one satellite image is required to generate a PDF report.")
+
+    prompt = req.query or "Automatic Comprehensive Geospatial PDF Intelligence Report"
+    try:
+        # Run deep orchestrator analysis for the PDF report
+        result = run_orchestrator(
+            query=prompt,
+            images=req.images,
+            analysis_mode="deep",
+            metadata=req.metadata
+        )
+
+        pdf_bytes = generate_satquery_pdf(
+            query=prompt,
+            analysis_text=result["answer"],
+            images_b64=req.images,
+            task_type=result.get("task_type", "change_vqa"),
+            confidence=result.get("confidence", 0.95),
+            execution_trace=result.get("execution_trace")
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=SatQuery_Geospatial_Intelligence_Report.pdf"
+            }
+        )
+    except Exception as e:
+        logger.error(f"PDF generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PDF generation error: {str(e)}")
 
 
 if __name__ == "__main__":
