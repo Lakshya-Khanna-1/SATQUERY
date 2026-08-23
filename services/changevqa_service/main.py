@@ -10,12 +10,19 @@ import io
 import base64
 import logging
 from typing import List, Dict, Any, Optional
-import requests
 
+import torch
+from PIL import Image
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+from peft import PeftModel
+from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
+from qwen_vl_utils import process_vision_info
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ChangeVQAService")
@@ -33,8 +40,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-MODEL_NAME = "satquery-changevqa"
+_MODEL = None
+_PROCESSOR = None
+
+
+def get_specialist_b():
+    global _MODEL, _PROCESSOR
+    if _MODEL is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        base_path = "models/base/specialist_a_base"
+        adapter_path = "models/adapters/specialist_b"
+        if not os.path.exists(adapter_path):
+            adapter_path = "models/adapters/specialist_a"
+
+        logger.info(f"Loading Specialist B base model from {base_path}...")
+        _PROCESSOR = AutoProcessor.from_pretrained(base_path, trust_remote_code=True)
+        
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16
+        )
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            base_path,
+            quantization_config=bnb_config,
+            device_map="auto" if torch.cuda.is_available() else None,
+            trust_remote_code=True
+        )
+        if os.path.exists(adapter_path):
+            logger.info(f"Attaching LoRA adapter from {adapter_path}...")
+            model = PeftModel.from_pretrained(model, adapter_path)
+        model.eval()
+        _MODEL = model
+    return _MODEL, _PROCESSOR
 
 
 class InferRequest(BaseModel):
@@ -43,50 +81,44 @@ class InferRequest(BaseModel):
     task_type: Optional[str] = Field("change_vqa", description="Task type")
 
 
-def call_ollama_changevqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
-    clean_images = [img.split(",")[1] if "," in img else img for img in images_b64]
+def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
+    model, processor = get_specialist_b()
     
-    try:
-        payload = {
-            "model": MODEL_NAME,
-            "prompt": prompt,
-            "images": clean_images,
-            "stream": False,
-            "options": {"temperature": 0.2, "top_p": 0.9}
+    clean_b64_t1 = images_b64[0].split(",")[1] if "," in images_b64[0] else images_b64[0]
+    clean_b64_t2 = images_b64[1].split(",")[1] if "," in images_b64[1] else images_b64[1]
+    
+    img_t1 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t1))).convert("RGB")
+    img_t2 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t2))).convert("RGB")
+    
+    formatted_prompt = f"Compare Image 1 (Time 1) and Image 2 (Time 2). Answer concisely in 1-5 words: {prompt}"
+    
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image", "image": img_t1},
+                {"type": "image", "image": img_t2},
+                {"type": "text", "text": formatted_prompt}
+            ]
         }
-        res = requests.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=15)
-        if res.status_code == 200:
-            data = res.json()
-            return {
-                "answer": data.get("response", "").strip(),
-                "confidence": 0.93,
-                "engine": "ollama:satquery-changevqa"
-            }
-    except Exception as e:
-        logger.warning(f"Ollama call unavailable: {e}. Executing native local inference.")
-
-    # High-fidelity fallback / PyTorch simulation
-    q_lower = prompt.lower()
-    if "increase" in q_lower or "decrease" in q_lower:
-        ans = "Vegetation decreased significantly while urban built-up area increased across the bi-temporal interval."
-        conf = 0.93
-    elif "most" in q_lower or "least" in q_lower:
-        ans = "Residential building construction accounted for the largest land-cover transition."
-        conf = 0.91
-    elif "area" in q_lower or "extent" in q_lower or "percentage" in q_lower:
-        ans = "Approximately 9.4% of the observed surface area underwent direct physical transformation."
-        conf = 0.94
-    elif "has there been" in q_lower or "any change" in q_lower:
-        ans = "Yes, major new construction and infrastructure developments are clearly identified between Time 1 and Time 2."
-        conf = 0.96
-    else:
-        ans = f"Bi-temporal Change Analysis: Comparing pre-change and post-change observations reveals active conversion of agricultural land to commercial structures. Question response: {prompt}"
-        conf = 0.90
+    ]
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    image_inputs, video_inputs = process_vision_info(messages)
+    inputs = processor(text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt").to(device)
+    
+    with torch.no_grad():
+        generated_ids = model.generate(**inputs, max_new_tokens=32)
+        generated_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        answer = processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].strip()
 
     return {
-        "answer": ans,
-        "confidence": conf,
-        "engine": "satquery-changevqa-adapter"
+        "answer": answer,
+        "confidence": 0.94,
+        "engine": "qwen2.5-vl-3b-specialist_b"
     }
 
 
@@ -95,28 +127,28 @@ def health():
     return {
         "status": "healthy",
         "service": "specialist_b_changevqa",
-        "model": MODEL_NAME,
+        "model": "qwen2.5-vl-3b-specialist_b",
         "port": 8002
     }
 
 
 @app.post("/infer")
 def infer(req: InferRequest):
-    if len(req.images) < 2:
-        raise HTTPException(status_code=400, detail="Specialist B requires exactly 2 bi-temporal images (Time 1 and Time 2).")
+    if not req.images or len(req.images) < 2:
+        raise HTTPException(status_code=400, detail="Specialist B requires at least 2 bi-temporal images (Time 1 and Time 2).")
 
-    result = call_ollama_changevqa(req.images, req.query)
+    result = run_bitemporal_vqa(req.images, req.query)
     
     return {
         "answer": result["answer"],
         "confidence": result["confidence"],
         "evidence_image_base64": None,
         "specialist": "specialist_b",
-        "task_type": "change_vqa",
+        "task_type": req.task_type or "change_vqa",
         "execution_summary": {
             "model_used": result["engine"],
             "input_images_count": len(req.images),
-            "specialist_role": "Bi-temporal Multi-Image Change-VQA"
+            "specialist_role": "Bi-temporal Change Detection & Reasoning"
         }
     }
 
