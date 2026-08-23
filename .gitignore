@@ -1,0 +1,39 @@
+# Python & Virtual Environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js & Frontend Build Outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.vite/
+
+# Large Model Weights & Raw Datasets
+models/base/
+data/raw/
+data/processed/
+specialist_a_testset/
+specialist_b_testset/
+specialist_c_testset/
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# Sensitive Environment Files & Keys
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary / Scratch files & Logs
+scratch/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,88 @@
+{
+  "name": "SatQuery AI Webhook Orchestrator Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "satquery",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook (POST /satquery)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "satquery-inbound-webhook"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:8000/query",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "retry": {
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 1000,
+            "retryStatusCodes": "500,502,503,504"
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Call Orchestrator (/query)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Respond to Frontend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (POST /satquery)": {
+      "main": [
+        [
+          {
+            "node": "Call Orchestrator (/query)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Orchestrator (/query)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
