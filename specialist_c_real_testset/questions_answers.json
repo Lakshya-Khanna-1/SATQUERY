@@ -1,0 +1,102 @@
+[
+  {
+    "index": 0,
+    "pair_id": "pair_00",
+    "title": "Urban Infrastructure & Transport Corridor",
+    "description": "High-density urban commercial zone with paved transportation grid and high SAR VV backscatter.",
+    "image_optical": "pair_00_optical.png",
+    "image_sar": "pair_00_sar.png",
+    "question": "Use the optical and SAR images together to identify built-up and water-covered regions.",
+    "ground_truth_answer": "Optical-SAR fusion identifies dense commercial infrastructure in the central sector with high radar backscatter, while optical imagery confirms surrounding paved parking corridors and green spaces."
+  },
+  {
+    "index": 1,
+    "pair_id": "pair_01",
+    "title": "Coastal Harbor & Maritime Shipping Vessel",
+    "description": "Deepwater port facility with metallic vessel reflections visible under SAR radar.",
+    "image_optical": "pair_01_optical.png",
+    "image_sar": "pair_01_sar.png",
+    "question": "Identify maritime vessels and shoreline boundaries using optical-SAR fusion.",
+    "ground_truth_answer": "Cross-modal fusion highlights maritime shipping vessels anchored near the port with intense SAR double-bounce reflections, penetrating superficial water glare."
+  },
+  {
+    "index": 2,
+    "pair_id": "pair_02",
+    "title": "Agricultural Cropland Grid & Soil Moisture",
+    "description": "Patterned agricultural fields with varying soil moisture levels captured across SAR C-band.",
+    "image_optical": "pair_02_optical.png",
+    "image_sar": "pair_02_sar.png",
+    "question": "Assess vegetation health and soil moisture across agricultural fields.",
+    "ground_truth_answer": "Optical NDVI confirms active crop canopy in the eastern plots, while SAR VH backscatter reveals high soil moisture content in the recently irrigated western plots."
+  },
+  {
+    "index": 3,
+    "pair_id": "pair_03",
+    "title": "Cloud-Obscured Industrial Complex",
+    "description": "Industrial refinery partially covered by thick cumulus clouds, penetrated by SAR microwave radar.",
+    "image_optical": "pair_03_optical.png",
+    "image_sar": "pair_03_sar.png",
+    "question": "Identify ground structures beneath cloud cover using SAR radar penetration.",
+    "ground_truth_answer": "While optical imagery is partially obscured by cumulus cloud cover, Sentinel-1 SAR microwave radar penetrates the atmospheric cloud layer, clearly mapping the underlying refinery storage tanks."
+  },
+  {
+    "index": 4,
+    "pair_id": "pair_04",
+    "title": "River Basin & Wetland Flood Inundation",
+    "description": "River floodplain with smooth open water surface causing specular SAR reflection.",
+    "image_optical": "pair_04_optical.png",
+    "image_sar": "pair_04_sar.png",
+    "question": "Map river basin boundaries and standing water inundation.",
+    "ground_truth_answer": "Specular microwave reflection in SAR imagery identifies open water channels as dark low-backscatter zones, matching the river channel visible in optical imagery."
+  },
+  {
+    "index": 5,
+    "pair_id": "pair_05",
+    "title": "Dense Forest Reserve & Canopy Volume",
+    "description": "Protected forestry zone with volumetric volume scattering.",
+    "image_optical": "pair_05_optical.png",
+    "image_sar": "pair_05_sar.png",
+    "question": "Analyze forest canopy density and vegetation boundaries.",
+    "ground_truth_answer": "Sentinel-2 optical vegetation spectrum aligns with high SAR VH cross-pol volume scattering, confirming dense unbroken forest canopy."
+  },
+  {
+    "index": 6,
+    "pair_id": "pair_06",
+    "title": "Mountainous Terrain & Topographic Shadow",
+    "description": "High-altitude ridge line exhibiting radar layover and shadow.",
+    "image_optical": "pair_06_optical.png",
+    "image_sar": "pair_06_sar.png",
+    "question": "Evaluate topographic features and elevation contours.",
+    "ground_truth_answer": "Optical-SAR fusion highlights steep mountain ridges, where SAR foreshortening and layover delineate slope orientations complementary to optical solar illumination."
+  },
+  {
+    "index": 7,
+    "pair_id": "pair_07",
+    "title": "Suburban Settlement & Residential Grid",
+    "description": "Suburban neighborhood with uniform housing layouts.",
+    "image_optical": "pair_07_optical.png",
+    "image_sar": "pair_07_sar.png",
+    "question": "Classify residential building structures and road networks.",
+    "ground_truth_answer": "Orthogonal residential street layout produces distinct corner-reflector backscatter in SAR, matching the suburban housing structures seen in optical imagery."
+  },
+  {
+    "index": 8,
+    "pair_id": "pair_08",
+    "title": "Coastal Dune & Sand Surface",
+    "description": "Arid coastal dunes with low dielectric constant.",
+    "image_optical": "pair_08_optical.png",
+    "image_sar": "pair_08_sar.png",
+    "question": "Analyze coastal dune landforms and surface roughness.",
+    "ground_truth_answer": "Low SAR backscatter across smooth sand surfaces correlates directly with open beach dune boundaries visible in high-resolution optical imagery."
+  },
+  {
+    "index": 9,
+    "pair_id": "pair_09",
+    "title": "Solar Energy Park & Photovoltaic Arrays",
+    "description": "Large-scale utility solar farm with metallic panel alignment.",
+    "image_optical": "pair_09_optical.png",
+    "image_sar": "pair_09_sar.png",
+    "question": "Detect solar photovoltaic panel arrays and energy infrastructure.",
+    "ground_truth_answer": "High-density metallic solar panel arrays exhibit distinct specular microwave polarization, confirming utility-scale clean energy installation."
+  }
+]
