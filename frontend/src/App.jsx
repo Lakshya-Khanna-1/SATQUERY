@@ -567,16 +567,16 @@ export default function App() {
                         </span>
                       </div>
 
-                      <div className={`grid gap-3 ${msg.raw_images.length >= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                      <div className={msg.raw_images.length >= 2 ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1'}>
                         {msg.raw_images.map((imgUrl, i) => (
-                          <div key={i} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group bg-zinc-900">
+                          <div key={i} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group bg-zinc-900 shadow-xs">
                             <img 
                               src={imgUrl} 
                               alt={`Satellite Scene ${i+1}`} 
-                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105" 
+                              className={`w-full object-cover transition-transform duration-300 group-hover:scale-105 ${msg.raw_images.length >= 2 ? 'h-44 sm:h-52' : 'h-60 sm:h-72'}`} 
                             />
-                            <div className="absolute top-2 left-2 bg-black/80 text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-bold backdrop-blur-xs">
-                              {msg.raw_images.length >= 2 ? (i === 0 ? "Time 1 (Baseline / Historical)" : "Time 2 (Present Day)") : "Optical Satellite Scene"}
+                            <div className="absolute top-2 left-2 bg-black/80 text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-bold backdrop-blur-xs border border-white/10">
+                              {msg.raw_images.length >= 2 ? (i === 0 ? "Time 1: Historical Baseline" : "Time 2: Recent Observation") : "Satellite Optical Scene"}
                             </div>
                           </div>
                         ))}
