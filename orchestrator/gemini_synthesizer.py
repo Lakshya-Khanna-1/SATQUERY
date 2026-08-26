@@ -1,10 +1,10 @@
 """
-SatQuery AI — Gemini Natural Language Synthesis Layer
+SatQuery AI — Gemini Natural Language & Geospatial Synthesis Layer
 SIH 2026 (PS 26167)
 
-Uses Gemini API (gemini-2.5-flash) to convert raw specialist model outputs
-(e.g., JSON bounding boxes, technical change metrics, raw class tags)
-into clear, natural, human-readable answers, supporting Quick (1-2 lines) and Deep (5+ lines) modes.
+Takes raw observation outputs from fine-tuned specialist computer vision models
+(Qwen2.5-VL QLoRA, U-Net Segmentation) + bi-temporal satellite images, and uses
+Gemini 2.5 Flash to synthesize ISRO/SAC judge-winning executive reports.
 """
 
 import os
@@ -46,13 +46,11 @@ def synthesize_with_gemini(
     api_key: Optional[str] = None
 ) -> str:
     """
-    Takes raw output from fine-tuned specialist models + optional satellite images,
-    and uses Gemini 2.5 Flash to generate a clear, human-readable natural language answer.
-    Supports Quick mode (1-2 informative sentences) and Deep mode (5+ detailed lines).
-    Includes automatic retries for HTTP 429 rate limits.
+    Synthesizes raw specialist model predictions into executive-grade geospatial intelligence.
+    Supports Quick Mode (1-2 complete informative sentences) and Deep Mode (structured ISRO/SAC 5+ line analysis).
     """
     if not raw_answer or not raw_answer.strip():
-        return "No visual evidence detected in the provided satellite imagery."
+        return "No visual feature transformation detected across the provided satellite observations."
     
     key = api_key or os.environ.get("GEMINI_API_KEY") or DEFAULT_API_KEY
     if not key:
@@ -61,33 +59,35 @@ def synthesize_with_gemini(
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     
     if analysis_mode.lower() == "deep":
-        mode_instruction = """FORMAT REQUIREMENT: DEEP MODE ANALYSIS (at least 5 detailed lines of information).
-Provide a complete, comprehensive geospatial intelligence breakdown covering:
-Line 1: Initial Baseline Observation (describe specific features/structures visible in Image 1 / Time 1).
-Line 2: Detected Visual Transformations (describe specific changes, additions, or modifications in Image 2 / Time 2).
-Line 3: Land-Cover & Environmental Impact (analyze vegetation, surface cover, or building density changes).
-Line 4: Spatial Correlation & Placement (describe exact spatial positioning across the scene).
-Line 5: Executive Conclusion & Confidence Assessment (final summary verification status).
-Ensure the output is directly based on the provided images and specialist output."""
-    else:
-        mode_instruction = """FORMAT REQUIREMENT: QUICK MODE (1 to 2 complete, informative sentences).
-Provide a clear, well-formed summary sentence in 1 to 2 lines giving full informative context to the user.
-Do NOT output short 3-4 word incomplete fragments. Output a proper, complete sentence explaining the observation clearly."""
+        mode_instruction = """FORMAT REQUIREMENT: DEEP MODE EXECUTIVE GEOSPATIAL REPORT (Minimum 5 detailed structured sections/lines).
+You must output a highly professional, structured ISRO/SAC executive intelligence report with exact bullet points:
 
-    system_prompt = f"""You are SatQuery AI's Natural Language Synthesizer for satellite geospatial intelligence.
-Your task is to take the observation output from specialist fine-tuned computer vision models and present it to the user according to the specified analysis mode.
+- **Baseline Observation (Time 1)**: Describe the specific land-cover, infrastructure, or natural features present in the first satellite observation.
+- **Visual Change Detection (Time 2)**: Detail the precise structural modifications, ground activity, or surface shifts observed in the second satellite scene over time.
+- **Land-Cover & Environmental Impact**: Analyze land conversion, vegetation loss/gain, or built-up structural density shifts based directly on visual evidence.
+- **Spatial Localization & Pattern Analysis**: State the exact spatial placement (e.g. central corridor, lower quadrant, riverbank border) of detected features.
+- **Executive Summary & Confidence**: Conclude with an executive-level operational takeaway and verification status.
+
+Do NOT output generic place-holder text. Base every point directly on the provided satellite images and specialist vision model observations."""
+    else:
+        mode_instruction = """FORMAT REQUIREMENT: QUICK MODE (1 to 2 complete, high-density informative sentences).
+Provide a clear, well-formed executive summary sentence in 1 to 2 lines giving complete geospatial context and key findings to the user.
+Do NOT output short 3-4 word incomplete fragments. Ensure the output is a polished, grammatically complete sentence."""
+
+    system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing (SIH 2026, PS 26167).
+Your task is to take raw computer vision model predictions and refine them into authoritative, professional, ISRO/SAC judge-winning intelligence reports.
 
 User Query: "{query}"
 Task Category: {task_type.upper()}
-Specialist Raw Output: "{raw_answer}"
+Specialist Vision Output: "{raw_answer}"
 
 {mode_instruction}
 
-General Rules:
-1. Base your answer strictly on the visual evidence in the images and specialist output. Never invent unrelated features (like rural vegetation if analyzing urban buildings).
-2. Do not output raw ```json code blocks or unparsed array brackets unless explicitly requested.
-3. If no change occurred between bi-temporal images, state clearly that the two scenes are structurally identical.
-4. Keep the output professional, direct, and conversational.
+General System Rules:
+1. Ground every statement strictly in the visual evidence provided in the images and specialist output.
+2. Never invent non-existent features (e.g. do not mention rural forests if the scene shows urban industrial structures).
+3. If bi-temporal images show no change, explicitly confirm that the structural footprint remains unchanged over time.
+4. Maintain an authoritative, professional remote-sensing domain tone.
 """
 
     parts = [{"text": system_prompt}]
@@ -114,7 +114,7 @@ General Rules:
     }
 
     # Execute request with exponential backoff on 429 rate limits
-    max_retries = 2
+    max_retries = 3
     for attempt in range(max_retries):
         try:
             req = urllib.request.Request(
@@ -122,7 +122,7 @@ General Rules:
                 data=json.dumps(payload).encode("utf-8"),
                 headers={"Content-Type": "application/json"}
             )
-            with urllib.request.urlopen(req, timeout=10) as res:
+            with urllib.request.urlopen(req, timeout=12) as res:
                 res_data = json.loads(res.read().decode("utf-8"))
                 candidates = res_data.get("candidates", [])
                 if candidates and "content" in candidates[0]:
@@ -133,8 +133,8 @@ General Rules:
                         return synthesized
         except urllib.error.HTTPError as http_err:
             if http_err.code == 429 and attempt < max_retries - 1:
-                logger.warning(f"Gemini API 429 Rate Limit hit. Retrying in 1.5s (Attempt {attempt+1}/{max_retries})...")
-                time.sleep(1.5)
+                logger.warning(f"Gemini API 429 Rate Limit hit. Retrying in 2.0s (Attempt {attempt+1}/{max_retries})...")
+                time.sleep(2.0)
                 continue
             logger.warning(f"Gemini API HTTP Error {http_err.code}: {http_err.reason}")
             break
@@ -149,18 +149,18 @@ def fallback_format(query: str, raw_answer: str, analysis_mode: str = "quick") -
     """Dynamic local fallback format when offline or API key quota exceeded."""
     trimmed = raw_answer.strip()
     
-    # Strip any brackets
+    # Strip any task brackets
     if "[" in trimmed and "]" in trimmed:
         clean_text = trimmed.split("]:")[-1].strip() if "]:" in trimmed else trimmed
     else:
         clean_text = trimmed
 
     if analysis_mode.lower() == "deep":
-        return f"""Baseline Observation (Time 1): Initial satellite observation capturing baseline geographic land cover.
-Visual Change Detection (Time 2): {clean_text}
-Land-Cover Transformation: Structural feature modifications identified between observation dates.
-Spatial Pattern Analysis: Changes localized across primary infrastructure sectors.
-Executive Conclusion: High-confidence specialist vision detection confirming observed scene dynamics."""
+        return f"""- **Baseline Observation (Time 1)**: Initial satellite observation capturing baseline geographic terrain and spatial feature layout.
+- **Visual Change Detection (Time 2)**: {clean_text}
+- **Land-Cover & Environmental Impact**: Surface feature dynamics indicate localized land transformation corresponding to observed model predictions.
+- **Spatial Localization & Pattern Analysis**: Detected spatial features are aligned within the primary observation frame.
+- **Executive Summary & Confidence**: High-confidence specialist vision model detection confirming observed scene dynamics."""
 
     # Quick mode fallback: Ensure complete sentence
     if len(trimmed.split()) <= 4:

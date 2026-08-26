@@ -158,7 +158,7 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
         }
         
         try:
-            res = requests.post(f"{service_url}/infer", json=payload, timeout=20)
+            res = requests.post(f"{service_url}/infer", json=payload, timeout=60)
             if res.status_code == 200:
                 data = res.json()
                 responses.append(data)
