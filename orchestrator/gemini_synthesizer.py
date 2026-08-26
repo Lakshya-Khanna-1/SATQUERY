@@ -40,6 +40,64 @@ def optimize_b64_image(b64_str: str, max_size: int = 384) -> str:
         return b64_str.split(",")[1] if "," in b64_str else b64_str
 
 
+def classify_intent_with_gemini(query: str) -> str:
+    """
+    Uses Gemini API (with Dual Key Rotation Pool) to intelligently parse user intent:
+    Returns: "BITEMPORAL_CHANGE" | "SINGLE_IMAGE_VQA" | "SAR_FUSION"
+    """
+    q_lower = query.lower()
+    
+    # Fast pre-checks for instant response
+    if any(w in q_lower for w in ["sar", "radar", "segmentation", "lulc"]):
+        return "SAR_FUSION"
+    if any(w in q_lower for w in ["what has changed", "past 5 years", "historical", "before and after", "change over time", "temporal", "urban growth", "deforestation"]):
+        return "BITEMPORAL_CHANGE"
+    if any(w in q_lower for w in ["describe", "water percentage", "vegetation", "buildings", "where is", "what is here", "land cover", "features"]):
+        return "SINGLE_IMAGE_VQA"
+
+    system_prompt = f"""You are an intent classification engine for an Earth Observation satellite analysis platform.
+Analyze the user query: "{query}"
+
+Classify into EXACTLY ONE category:
+- "BITEMPORAL_CHANGE": If the user is asking about historical changes, past vs present, temporal progression, what changed over time, years ago, or construction growth.
+- "SINGLE_IMAGE_VQA": If the user is asking to describe the image, identify features, calculate water/vegetation percentage, locate buildings/roads, or ask about current land cover.
+- "SAR_FUSION": If the user asks for SAR/radar microwave fusion, land-use segmentation mask, or LULC mapping.
+
+Return ONLY JSON: {{"category": "BITEMPORAL_CHANGE" | "SINGLE_IMAGE_VQA" | "SAR_FUSION"}}"""
+
+    payload = {
+        "contents": [{"parts": [{"text": system_prompt}]}],
+        "generationConfig": {"temperature": 0.0, "maxOutputTokens": 64}
+    }
+
+    for key_idx, current_key in enumerate(GEMINI_KEY_POOL):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={current_key}"
+        try:
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as res:
+                res_data = json.loads(res.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    txt = candidates[0]["content"]["parts"][0]["text"].strip()
+                    if "BITEMPORAL_CHANGE" in txt:
+                        logger.info(f"Gemini Intent Classifier: BITEMPORAL_CHANGE (Key #{key_idx+1})")
+                        return "BITEMPORAL_CHANGE"
+                    elif "SAR_FUSION" in txt:
+                        logger.info(f"Gemini Intent Classifier: SAR_FUSION (Key #{key_idx+1})")
+                        return "SAR_FUSION"
+                    elif "SINGLE_IMAGE_VQA" in txt:
+                        logger.info(f"Gemini Intent Classifier: SINGLE_IMAGE_VQA (Key #{key_idx+1})")
+                        return "SINGLE_IMAGE_VQA"
+        except Exception as e:
+            logger.warning(f"Gemini Intent Classifier Key #{key_idx+1} note: {e}")
+            continue
+
+    # Fallback default
+    if any(k in q_lower for k in ["change", "past", "years", "historical", "before"]):
+        return "BITEMPORAL_CHANGE"
+    return "SINGLE_IMAGE_VQA"
+
+
 def synthesize_with_gemini(
     query: str, 
     raw_answer: str, 
