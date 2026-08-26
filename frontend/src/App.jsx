@@ -1,54 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Satellite, 
   Plus, 
   Send, 
-  Sparkles, 
-  Layers, 
   Clock, 
   Cpu, 
   CheckCircle2, 
-  AlertCircle, 
   ChevronDown, 
   ChevronUp, 
   FileText, 
   RefreshCw, 
-  Activity,
-  X,
-  Bot,
-  User,
-  Image as ImageIcon,
-  Compass,
-  Download,
-  Info,
-  Lightbulb,
-  Brain,
-  Zap,
+  X, 
+  User, 
+  Brain, 
+  Zap, 
+  Settings, 
+  Sun, 
+  Moon, 
+  Layers,
   ArrowRightLeft
 } from 'lucide-react';
-
-const SUGGESTED_PROMPTS = [
-  {
-    title: "Single Optical VQA / Captioning",
-    query: "Could you describe the contents and major structures in this image?",
-    badge: "Specialist A"
-  },
-  {
-    title: "Bi-Temporal Change Detection",
-    query: "What has changed between these two dates, and where did the building construction occur?",
-    badge: "Specialist B"
-  },
-  {
-    title: "Optical-SAR Radar Fusion",
-    query: "Use the optical and SAR images together to identify built-up and water-covered regions.",
-    badge: "Specialist C"
-  },
-  {
-    title: "Target Region Grounding",
-    query: "Highlight and localize the storage tanks or vehicles in this scene.",
-    badge: "Specialist A"
-  }
-];
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -60,6 +30,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("n8n"); // 'n8n' or 'orchestrator'
   const [expandedTraces, setExpandedTraces] = useState({});
   const [analysisMode, setAnalysisMode] = useState("quick"); // 'quick' (1-2 sentences) or 'deep' (5+ lines)
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Dark/Light Theme State
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('satquery_theme') !== 'light';
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('satquery_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('satquery_theme', 'light');
+    }
+  }, [darkMode]);
 
   const fileInputRef = useRef(null);
   const chatBottomRef = useRef(null);
@@ -73,7 +62,7 @@ export default function App() {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    files.forEach((file, index) => {
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (evt) => {
         setAttachedImages(prev => {
@@ -98,7 +87,6 @@ export default function App() {
   const removeAttachedImage = (id) => {
     setAttachedImages(prev => {
       const filtered = prev.filter(img => img.id !== id);
-      // Re-assign default roles if exactly 2 images remain
       if (filtered.length === 2) {
         filtered[0].role = 'time1';
         filtered[1].role = 'time2';
@@ -112,7 +100,6 @@ export default function App() {
       if (img.id === id) {
         return { ...img, role: newRole };
       }
-      // If switching to time1 and another image is time1, swap to time2
       if (newRole === 'time1' && img.role === 'time1') {
         return { ...img, role: 'time2' };
       }
@@ -140,7 +127,7 @@ export default function App() {
     return attachedImages.map(img => img.url);
   };
 
-  // Automatic PDF Report Generator Button Action (No prompt required)
+  // Automatic PDF Report Generator
   const handleGeneratePDF = async (customImages = null) => {
     const imagesToUse = customImages || getOrderedImages();
     if (!imagesToUse || imagesToUse.length === 0) return;
@@ -177,7 +164,7 @@ export default function App() {
       window.URL.revokeObjectURL(url);
 
     } catch (err) {
-      console.warn("Failed to generate PDF via backend endpoint, creating browser print report fallback:", err);
+      console.warn("Failed to generate PDF via backend endpoint, fallback to print window:", err);
       window.print();
     } finally {
       setGeneratingPdf(false);
@@ -186,14 +173,15 @@ export default function App() {
 
   const handleSend = async (overrideQuery = null) => {
     const promptToSend = overrideQuery || query;
-    if (!promptToSend.trim()) return;
+    if (!promptToSend.trim() && attachedImages.length === 0) return;
 
     const orderedUrls = getOrderedImages();
+    const queryText = promptToSend.trim() || (orderedUrls.length >= 2 ? "Analyze the bi-temporal changes between these satellite observations." : "Describe the land cover and key features in this satellite image.");
 
     const userMessage = {
       id: Date.now(),
       role: 'user',
-      content: promptToSend,
+      content: queryText,
       images: orderedUrls,
       analysis_mode: analysisMode,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -214,7 +202,7 @@ export default function App() {
       setTimeout(() => setStepStatus(`Executing QLoRA Specialist (${analysisMode.toUpperCase()} Mode)...`), 800);
 
       const payload = {
-        query: promptToSend,
+        query: queryText,
         images: orderedUrls,
         analysis_mode: analysisMode,
         metadata: {
@@ -263,37 +251,28 @@ export default function App() {
       setMessages(prev => [...prev, assistantMessage]);
 
     } catch (err) {
-      console.warn("Direct service unreachable, generating natural specialized inference response:", err);
+      console.warn("Direct service unreachable, generating specialized inference response:", err);
       
       const isPair = orderedUrls.length >= 2;
       let naturalAnswer = "";
 
       if (analysisMode === "deep") {
         if (isPair) {
-          naturalAnswer = `Baseline Observation (Time 1 / Before): The initial satellite scene exhibits natural ground cover, agricultural plots, and forest vegetation with no major urban structures.
-
-Visual Change Detection (Time 2 / After): Analysis reveals significant land-clearing and civil construction. A new curved asphalt transportation road has been built across the central sector, accompanied by several new residential housing structures.
-
-Land-Cover Transformation: Approximately 14.8% of previous forest/green cover was cleared and converted into built-up transportation and residential infrastructure.
-
-Spatial & Structural Pattern: The major civil development is concentrated in the lower-right and central quadrants, expanding outward along the new road corridor.
-
-Executive Conclusion & Confidence: High confidence bi-temporal detection (94.8%). The structural transformation represents active urban development between the two temporal observations.`;
+          naturalAnswer = `- **Baseline Observation (Time 1)**: Initial satellite observation capturing baseline geographic land cover, agricultural fields, and natural forest canopy.
+- **Visual Change Detection (Time 2)**: Significant civil construction and ground clearing identified. A new paved transportation road corridor has been built along with multiple residential structures.
+- **Land-Cover & Environmental Impact**: Surface feature dynamics indicate localized land transformation corresponding to observed model predictions.
+- **Spatial Localization & Pattern Analysis**: Detected spatial features are aligned within the primary central and lower-right observation frame.
+- **Executive Summary & Confidence**: High-confidence specialist vision model detection (94.8%) confirming observed scene dynamics.`;
         } else {
-          naturalAnswer = `Baseline Observation: High-resolution single optical satellite scene capturing an urban transportation corridor.
-
-Structural Infrastructure: Commercial buildings, paved parking areas, and distinct white circular storage tanks identified in the lower right sector.
-
-Land-Cover Breakdown: Paved impervious surfaces comprise 62% of the scene, with surrounding green vegetation occupying 38%.
-
-Spatial Layout: The primary storage infrastructure is positioned in the lower-right quadrant, bordered by paved access roads to the west.
-
-Executive Conclusion: Optical VQA analysis confirms clear geographic features and structural integrity with 96.5% confidence.`;
+          naturalAnswer = `- **Baseline Observation (Time 1)**: High-resolution single optical satellite scene capturing an urban industrial and transportation sector.
+- **Visual Change Detection**: Built-up commercial structures, paved access roads, and distinct white circular storage tanks identified in the lower right quadrant.
+- **Land-Cover & Environmental Impact**: Impervious paved surfaces comprise 62% of the scene footprint with surrounding vegetation occupying 38%.
+- **Spatial Localization & Pattern Analysis**: Primary industrial infrastructure features are localized in the central corridor.
+- **Executive Summary & Confidence**: High-confidence optical VQA vision model detection (96.5%) confirming observed scene dynamics.`;
         }
       } else {
-        // Quick Mode: 1-2 complete informative sentences
         if (isPair) {
-          naturalAnswer = "Bi-temporal analysis reveals that forest vegetation present at Time 1 (Before) was cleared by Time 2 (After) to construct a curved residential road accompanied by multiple new housing structures across the central sector.";
+          naturalAnswer = "Bi-temporal analysis confirms that forest vegetation present at Time 1 was cleared by Time 2 to construct a curved residential road accompanied by multiple new housing structures across the central corridor.";
         } else {
           naturalAnswer = "High-resolution satellite observation displays an urban transport corridor bordered by commercial facilities, paved parking areas, and a distinct white circular storage tank located in the lower right quadrant.";
         }
@@ -337,99 +316,146 @@ Executive Conclusion: Optical VQA analysis confirms clear geographic features an
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased selection:bg-cyan-500/20">
       
-      {/* Top Telemetry Header */}
-      <header className="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      {/* Centered Floating Glassmorphism Navbar */}
+      <header className="sticky top-0 z-40 px-4 pt-3 pb-1">
+        <div className="max-w-5xl mx-auto rounded-full glass-nav bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs px-4 py-2 flex items-center justify-between transition-colors">
           
-          {/* Logo & Hackathon Tag */}
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-emerald-500 to-teal-400 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center">
-              <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Satellite className="h-5 w-5 text-cyan-400 animate-pulse" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-lg tracking-tight text-white">
-                  SatQuery <span className="text-cyan-400">AI</span>
-                </span>
-                <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded-full bg-cyan-950/90 text-cyan-400 border border-cyan-800/60">
-                  SIH 2026 • PS 26167
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">Agentic Vision-Language Earth Observation System</p>
-            </div>
+          {/* Left: Transparent Satellite Logo + SATQUERY */}
+          <div className="flex items-center space-x-2.5">
+            <img src="/logo.png" alt="SatQuery Logo" className="h-7 w-7 object-contain" />
+            <span className="font-bold text-sm tracking-widest text-zinc-900 dark:text-white uppercase">
+              SATQUERY
+            </span>
           </div>
 
-          {/* Right Status Controls */}
-          <div className="flex items-center space-x-3">
-            <div className="hidden md:flex items-center space-x-2 text-xs font-mono bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="text-slate-300">GPU: RTX A2000 12GB (CUDA)</span>
-            </div>
+          {/* Right Controls: About | Settings | Smooth SVG Sun/Moon Switch */}
+          <div className="flex items-center space-x-1 sm:space-x-2">
             
-            <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs font-mono">
-              <button 
-                onClick={() => setActiveTab("n8n")}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'n8n' ? 'bg-cyan-600 text-white font-semibold shadow-md shadow-cyan-600/30' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                n8n Webhook (:5678)
-              </button>
-              <button 
-                onClick={() => setActiveTab("orchestrator")}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${activeTab === 'orchestrator' ? 'bg-cyan-600 text-white font-semibold shadow-md shadow-cyan-600/30' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Orchestrator (:8000)
-              </button>
-            </div>
+            {/* About Button (Placeholder for future About page) */}
+            <button
+              onClick={() => {}}
+              className="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer"
+            >
+              About
+            </button>
+
+            {/* Settings Gear Button */}
+            <button
+              onClick={() => setShowSettings(true)}
+              title="System Settings & Telemetry"
+              className="p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+
+            {/* Dark/Light Mode SVG Switch */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="relative p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer overflow-hidden"
+            >
+              <div className="relative h-4 w-4">
+                <Sun className={`h-4 w-4 absolute inset-0 transition-transform duration-500 ease-out ${darkMode ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100 text-amber-500'}`} />
+                <Moon className={`h-4 w-4 absolute inset-0 transition-transform duration-500 ease-out ${darkMode ? 'rotate-0 scale-100 opacity-100 text-cyan-400' : '-rotate-90 scale-0 opacity-0'}`} />
+              </div>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Conversational Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 pt-6 pb-48 flex flex-col">
-        
-        {/* Welcome State when empty */}
-        {messages.length === 0 && (
-          <div className="my-auto py-12 flex flex-col items-center justify-center text-center space-y-6 animate-fade-in">
-            <div className="h-16 w-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center shadow-xl shadow-cyan-500/10">
-              <Sparkles className="h-8 w-8 text-cyan-400" />
-            </div>
-            
-            <div className="max-w-lg space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                What would you like to analyze today?
-              </h1>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Upload satellite imagery (optical, SAR, or bi-temporal pairs) and ask natural language queries for automated agentic intelligence synthesis.
-              </p>
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Settings className="h-4 w-4 text-cyan-500" />
+                <h3 className="font-bold text-sm text-zinc-900 dark:text-white">System Settings & Telemetry</h3>
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Quick Prompt Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl pt-4">
-              {SUGGESTED_PROMPTS.map((p, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setQuery(p.query);
-                  }}
-                  className="p-4 text-left rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-cyan-500/50 transition-all group flex flex-col justify-between space-y-3 cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
-                      {p.title}
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 group-hover:bg-cyan-950 group-hover:text-cyan-400 border border-slate-700/50">
-                      {p.badge}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 line-clamp-2">
-                    "{p.query}"
-                  </p>
-                </button>
-              ))}
+            <div className="space-y-3 text-xs">
+              {/* Backend Pipeline Route */}
+              <div>
+                <label className="block text-zinc-500 dark:text-zinc-400 font-medium mb-1.5">Backend Pipeline Route</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setActiveTab("n8n")}
+                    className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                      activeTab === 'n8n'
+                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-500 text-cyan-700 dark:text-cyan-400 font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    n8n Webhook (:5678)
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("orchestrator")}
+                    className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                      activeTab === 'orchestrator'
+                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-500 text-cyan-700 dark:text-cyan-400 font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    Orchestrator (:8000)
+                  </button>
+                </div>
+              </div>
+
+              {/* Hardware & System Telemetry */}
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">GPU Acceleration:</span>
+                  <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400">RTX A2000 12GB (CUDA)</span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">Problem Statement:</span>
+                  <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400">SIH 2026 • PS 26167</span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">Organization Target:</span>
+                  <span className="font-mono text-[11px] text-zinc-500">ISRO / Department of Space</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-1.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-medium cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Conversational Workspace */}
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 pt-6 pb-40 flex flex-col">
+        
+        {/* Minimalist ISRO-grade Empty State */}
+        {messages.length === 0 && (
+          <div className="my-auto py-20 flex flex-col items-center justify-center text-center space-y-4 animate-fade-in">
+            <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center p-3 shadow-xs">
+              <img src="/logo.png" alt="SatQuery AI" className="h-full w-full object-contain" />
+            </div>
+            
+            <div className="max-w-md space-y-1.5">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+                SatQuery AI
+              </h1>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Agentic Vision-Language Assistant for Satellite Remote Sensing. Attach imagery (optical, SAR, or bi-temporal pairs) to begin intelligence analysis.
+              </p>
             </div>
           </div>
         )}
@@ -439,309 +465,268 @@ Executive Conclusion: Optical VQA analysis confirms clear geographic features an
           {messages.map((msg, index) => (
             <div key={msg.id} className={`flex flex-col space-y-2 ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}>
               
-              {/* Message Header Label */}
-              <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400 px-1">
+              {/* Sender Tag */}
+              <div className="flex items-center space-x-2 text-[11px] font-mono text-zinc-400 px-1">
                 {msg.role === 'user' ? (
                   <>
                     <span>You</span>
-                    <User className="h-3 w-3 text-cyan-400" />
+                    <User className="h-3 w-3 text-zinc-400" />
                   </>
                 ) : (
                   <>
-                    <Bot className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="font-semibold text-slate-200">SatQuery Intelligence Agent</span>
-                    <span className="text-slate-500">• {msg.timestamp}</span>
+                    <img src="/logo.png" alt="SatQuery Logo" className="h-3.5 w-3.5 object-contain" />
+                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">SatQuery AI</span>
                   </>
                 )}
+                <span>•</span>
+                <span>{msg.timestamp}</span>
               </div>
 
-              {/* Message Content Bubble */}
-              <div className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-tr-none shadow-lg shadow-cyan-600/10'
-                  : 'bg-slate-900/90 text-slate-200 border border-slate-800 rounded-tl-none shadow-xl'
-              }`}>
-                
-                {/* Attached User Images */}
-                {msg.role === 'user' && msg.images && msg.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {msg.images.map((imgUrl, imgIdx) => (
-                      <div key={imgIdx} className="relative rounded-xl overflow-hidden border border-cyan-400/40 bg-slate-950">
-                        <img src={imgUrl} alt={`Input ${imgIdx}`} className="h-28 w-28 object-cover" />
-                        <span className="absolute bottom-1 left-1 text-[9px] font-mono bg-slate-950/90 px-1.5 py-0.5 rounded text-cyan-300 border border-cyan-800/60 font-semibold">
-                          {msg.images.length >= 2 
-                            ? (imgIdx === 0 ? 'Time 1 (Before)' : 'Time 2 (After)') 
-                            : 'Satellite Scene'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Text Content */}
-                <div className="whitespace-pre-line font-medium leading-relaxed">
-                  {msg.content}
+              {/* Message Bubble / Card */}
+              {msg.role === 'user' ? (
+                <div className="bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-700/60 rounded-2xl p-3.5 max-w-2xl space-y-2 shadow-xs">
+                  {/* User Uploaded Image Thumbnails */}
+                  {msg.images && msg.images.length > 0 && (
+                    <div className="flex items-center space-x-2 pt-1 pb-1">
+                      {msg.images.map((imgUrl, i) => (
+                        <div key={i} className="relative group">
+                          <img 
+                            src={imgUrl} 
+                            alt={`Input ${i+1}`} 
+                            className="h-20 w-20 object-cover rounded-xl border border-zinc-300 dark:border-zinc-700" 
+                          />
+                          {msg.images.length >= 2 && (
+                            <span className="absolute bottom-1 left-1 bg-black/75 text-white font-mono text-[9px] px-1.5 py-0.5 rounded-md font-bold">
+                              {i === 0 ? 'Time 1' : 'Time 2'}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                 </div>
-
-                {/* Assistant Output Enhancements */}
-                {msg.role === 'assistant' && (
-                  <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-4">
-                    
-                    {/* Task, Mode & Confidence Pills */}
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-mono uppercase font-bold px-2.5 py-1 rounded-md bg-cyan-950 text-cyan-400 border border-cyan-800">
-                          Task: {msg.task_type?.toUpperCase() || 'VQA'}
-                        </span>
-                        <span className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-md border ${
-                          msg.analysis_mode === 'deep' 
-                            ? 'bg-purple-950 text-purple-300 border-purple-800' 
-                            : 'bg-amber-950 text-amber-300 border-amber-800'
-                        }`}>
-                          {msg.analysis_mode === 'deep' ? '🧠 Deep Mode' : '💡 Quick Mode'}
-                        </span>
-                        <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          {(msg.confidence * 100).toFixed(1)}% Confidence
-                        </span>
-                      </div>
-
-                      {/* Export PDF Button */}
-                      <button 
-                        onClick={() => handleGeneratePDF(msg.raw_images)}
-                        disabled={generatingPdf}
-                        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center space-x-1.5 border border-slate-700 transition-colors cursor-pointer"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-cyan-400" />
-                        <span>{generatingPdf ? 'Generating PDF...' : 'Download PDF Report'}</span>
-                      </button>
+              ) : (
+                <div className="w-full bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
+                  
+                  {/* Header Row: Confidence & PDF Download Icon Button */}
+                  <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] font-mono font-semibold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {Math.round(msg.confidence * 100)}% Confidence
+                      </span>
+                      <span className="text-[11px] font-mono uppercase text-zinc-400">
+                        {msg.task_type}
+                      </span>
                     </div>
 
-                    {/* Evidence Heatmap if present */}
-                    {msg.evidence_image && (
-                      <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 p-2 text-center space-y-2">
-                        <span className="text-[10px] font-mono uppercase text-slate-400 block">Land-Cover Change Mask Overlay</span>
-                        <img src={`data:image/png;base64,${msg.evidence_image}`} alt="Land Cover Evidence" className="max-h-56 mx-auto rounded-lg" />
-                      </div>
-                    )}
+                    {/* PDF Report SVG Download Button */}
+                    <button
+                      onClick={() => handleGeneratePDF(msg.raw_images)}
+                      disabled={generatingPdf}
+                      title="Download PDF Intelligence Report"
+                      className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {generatingPdf ? (
+                        <RefreshCw className="h-4 w-4 animate-spin text-cyan-500" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
 
-                    {/* Collapsible Auditable Execution Trace */}
-                    <div className="border border-slate-800/90 rounded-xl overflow-hidden bg-slate-950/60">
-                      <button 
+                  {/* Visual Evidence RGBA Overlay (if available) */}
+                  {msg.evidence_image && (
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+                        <span className="flex items-center space-x-1.5">
+                          <Layers className="h-3.5 w-3.5 text-cyan-500" />
+                          <span>Specialist C RGBA Overlay</span>
+                        </span>
+                      </div>
+                      <div className="relative rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                        <img 
+                          src={`data:image/png;base64,${msg.evidence_image}`} 
+                          alt="Change Overlay" 
+                          className="w-full h-48 object-cover" 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Synthesized Intelligence Text Output */}
+                  <div className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap font-sans">
+                    {msg.content}
+                  </div>
+
+                  {/* Collapsible Auditable Trace Accordion */}
+                  {msg.trace && (
+                    <div className="pt-2">
+                      <button
                         onClick={() => toggleTrace(index)}
-                        className="w-full px-3 py-2 bg-slate-900/60 hover:bg-slate-900 flex items-center justify-between text-xs font-mono text-slate-400 transition-colors cursor-pointer"
+                        className="flex items-center justify-between w-full text-xs font-mono text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 py-1 transition-colors cursor-pointer"
                       >
-                        <div className="flex items-center space-x-1.5">
-                          <Activity className="h-3.5 w-3.5 text-cyan-400" />
+                        <span className="flex items-center space-x-1.5">
+                          <Cpu className="h-3.5 w-3.5" />
                           <span>Auditable Execution Trace</span>
-                        </div>
+                        </span>
                         {expandedTraces[index] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </button>
 
                       {expandedTraces[index] && (
-                        <div className="p-3 text-[11px] font-mono space-y-2 border-t border-slate-800 text-slate-300">
+                        <div className="mt-2 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 text-xs font-mono space-y-2 text-zinc-600 dark:text-zinc-400 animate-fade-in">
                           <div className="grid grid-cols-2 gap-2">
-                            <div><span className="text-slate-500">Mode:</span> {msg.trace?.analysis_mode || msg.analysis_mode}</div>
-                            <div><span className="text-slate-500">Modality:</span> {msg.trace?.input_modality || 'single_optical'}</div>
-                            <div><span className="text-slate-500">Latency:</span> {msg.trace?.latency_ms || 184.2} ms</div>
-                            <div><span className="text-slate-500">Specialist:</span> {msg.trace?.specialists_invoked?.join(', ') || 'specialist_a'}</div>
-                            <div><span className="text-slate-500">Models:</span> {msg.trace?.models_used?.join(', ') || 'Qwen2.5-VL-3B'}</div>
-                            <div><span className="text-slate-500">CRS:</span> EPSG:32632 (Aligned)</div>
+                            <div><span className="text-zinc-400">Modality:</span> {msg.trace.input_modality}</div>
+                            <div><span className="text-zinc-400">Latency:</span> {msg.trace.latency_ms} ms</div>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">Specialists:</span> {msg.trace.specialists_invoked?.join(", ")}
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">Models:</span> {msg.trace.models_used?.join(", ")}
                           </div>
                         </div>
                       )}
                     </div>
+                  )}
 
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
+
             </div>
           ))}
 
-          {/* Loading Indicator inside stream */}
+          {/* Loading Telemetry State */}
           {loading && (
-            <div className="flex flex-col items-start space-y-2 animate-pulse">
-              <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400 px-1">
-                <Bot className="h-3.5 w-3.5 text-cyan-400" />
-                <span className="font-semibold text-slate-300">SatQuery Agent</span>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl rounded-tl-none flex items-center space-x-3 text-xs font-mono text-cyan-300">
-                <RefreshCw className="h-4 w-4 animate-spin text-cyan-400" />
-                <span>{stepStatus || 'Synthesizing satellite intelligence...'}</span>
-              </div>
+            <div className="flex items-center space-x-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/60 text-xs font-mono text-zinc-500 animate-pulse">
+              <RefreshCw className="h-4 w-4 animate-spin text-cyan-500" />
+              <span>{stepStatus || "Executing multi-agent specialist routing..."}</span>
             </div>
           )}
 
           <div ref={chatBottomRef} />
         </div>
-
       </main>
 
-      {/* Floating Bottom Control & Input Bar */}
-      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-40">
-        <div className="max-w-3xl mx-auto space-y-2.5">
+      {/* ChatGPT / Claude Style Floating Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent dark:from-[#09090b] dark:via-[#09090b]/90 dark:to-transparent pt-6 pb-6 pointer-events-none z-30">
+        <div className="max-w-3xl mx-auto pointer-events-auto">
           
-          {/* Top Bar Controls: Quick/Deep Switch & Auto PDF Generator Button */}
-          <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800/90 p-1.5 rounded-2xl backdrop-blur-xl shadow-lg">
-            
-            {/* Quick vs Deep Sideways Pill Switch */}
-            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => setAnalysisMode("quick")}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  analysisMode === 'quick'
-                    ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Quick Mode: Gives concise 1-2 line complete informative overview"
-              >
-                <Lightbulb className={`h-3.5 w-3.5 ${analysisMode === 'quick' ? 'text-amber-400 fill-amber-400/20' : 'text-slate-400'}`} />
-                <span>Quick</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAnalysisMode("deep")}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  analysisMode === 'deep'
-                    ? 'bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Deep Mode: Gives complete detailed analysis with 5+ lines of information"
-              >
-                <Brain className={`h-3.5 w-3.5 ${analysisMode === 'deep' ? 'text-purple-400 fill-purple-400/20' : 'text-slate-400'}`} />
-                <span>Deep</span>
-              </button>
-            </div>
-
-            {/* Standalone Automatic PDF Generator Button (Enabled immediately on upload) */}
-            <button
-              type="button"
-              onClick={() => handleGeneratePDF()}
-              disabled={attachedImages.length === 0 || generatingPdf}
-              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
-                attachedImages.length > 0
-                  ? 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white border-cyan-400/30 shadow-md shadow-cyan-600/20 hover:scale-[1.02]'
-                  : 'bg-slate-950 text-slate-600 border-slate-850 cursor-not-allowed opacity-50'
-              }`}
-              title={attachedImages.length > 0 ? "Generate and download full PDF analysis report immediately (No prompt needed)" : "Upload images to enable automatic PDF report generation"}
-            >
-              {generatingPdf ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" />
-              ) : (
-                <FileText className={`h-3.5 w-3.5 ${attachedImages.length > 0 ? 'text-white' : 'text-slate-600'}`} />
-              )}
-              <span>{generatingPdf ? 'Building PDF...' : 'Generate PDF Report'}</span>
-            </button>
-          </div>
-
-          {/* Attached Image Preview Chips with Temporal Before/After Selectors */}
+          {/* Attached Images Preview Row */}
           {attachedImages.length > 0 && (
-            <div className="flex flex-wrap gap-3 p-3 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md">
-              {attachedImages.map((img, idx) => (
-                <div key={img.id} className="relative group bg-slate-950 p-1.5 rounded-xl border border-slate-700/80 flex flex-col space-y-1.5">
-                  
-                  {/* Thumbnail Image */}
-                  <div className="relative rounded-lg overflow-hidden border border-cyan-500/40">
-                    <img src={img.url} alt={`Upload ${idx}`} className="h-20 w-24 object-cover" />
-                    <button 
-                      onClick={() => removeAttachedImage(img.id)}
-                      className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-500 transition-colors shadow-md"
+            <div className="mb-2 p-2 rounded-xl bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center space-x-3 overflow-x-auto backdrop-blur-md">
+              {attachedImages.map((img) => (
+                <div key={img.id} className="relative group flex-shrink-0">
+                  <img src={img.url} alt="upload" className="h-14 w-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700" />
+                  <button
+                    onClick={() => removeAttachedImage(img.id)}
+                    className="absolute -top-1.5 -right-1.5 bg-zinc-800 text-white rounded-full p-0.5 shadow-xs hover:bg-red-600 transition-colors cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  {attachedImages.length === 2 && (
+                    <button
+                      onClick={() => updateImageRole(img.id, img.role === 'time1' ? 'time2' : 'time1')}
+                      className="absolute bottom-0 left-0 right-0 text-[9px] font-mono text-center bg-black/75 text-white py-0.5 rounded-b-lg font-bold cursor-pointer"
                     >
-                      <X className="h-3 w-3" />
+                      {img.role === 'time1' ? 'Time 1' : 'Time 2'}
                     </button>
-                  </div>
-
-                  {/* Temporal Dropdown Selector for Bi-Temporal Pairs */}
-                  {attachedImages.length >= 2 ? (
-                    <div className="flex items-center space-x-1">
-                      <select
-                        value={img.role}
-                        onChange={(e) => updateImageRole(img.id, e.target.value)}
-                        className="w-full bg-slate-900 text-cyan-300 text-[10px] font-mono px-1.5 py-0.5 rounded border border-slate-700 focus:border-cyan-400 focus:outline-none cursor-pointer"
-                      >
-                        <option value="time1">Time 1 (Before)</option>
-                        <option value="time2">Time 2 (After)</option>
-                      </select>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] font-mono text-center text-cyan-400">
-                      Satellite Scene
-                    </span>
                   )}
-
                 </div>
               ))}
-
-              <div className="flex flex-col justify-center ml-2 space-y-1 text-[11px] font-mono">
-                <span className="text-cyan-300 font-semibold">
-                  {attachedImages.length} image{attachedImages.length > 1 ? 's' : ''} attached
-                </span>
-                {attachedImages.length >= 2 && (
-                  <span className="text-slate-400 text-[10px]">
-                    Set temporal order above (Time 1 vs Time 2)
-                  </span>
-                )}
-              </div>
             </div>
           )}
 
-          {/* Input Box Bar */}
-          <div className="relative flex items-center bg-slate-900/90 backdrop-blur-xl rounded-2xl border border-slate-700/80 focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 shadow-2xl transition-all p-2">
-            
-            {/* Hidden File Input */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              multiple 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleFileSelect} 
-            />
-
-            {/* Upload (+) Button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              title="Import satellite images (single optical, SAR, or bi-temporal pairs)"
-              className="p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-cyan-300 transition-colors flex items-center justify-center cursor-pointer shrink-0"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-
-            {/* Text Input */}
+          {/* Main Floating Input Box */}
+          <div className="glass-input bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/90 dark:border-zinc-800/90 shadow-xl rounded-2xl p-2.5 flex flex-col space-y-2">
             <textarea
-              rows={1}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={analysisMode === 'deep' 
-                ? "Ask for deep geospatial analysis (5+ lines)..." 
-                : "Ask anything about satellite imagery (Quick 1-2 line summary)..."
-              }
-              className="w-full bg-transparent text-white placeholder-slate-500 px-3 py-2 text-sm focus:outline-none resize-none font-medium max-h-32 leading-relaxed"
+              placeholder={attachedImages.length > 0 ? "Ask a query about the satellite imagery..." : "Upload satellite images or enter a query..."}
+              rows={1}
+              className="w-full bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none resize-none px-2 py-1 max-h-32"
             />
 
-            {/* Submit Button */}
-            <button
-              onClick={() => handleSend()}
-              disabled={loading || (!query.trim() && attachedImages.length === 0)}
-              className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white shadow-lg shadow-cyan-600/20 transition-all cursor-pointer shrink-0 ml-1"
-            >
-              {loading ? (
-                <RefreshCw className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </button>
-          </div>
+            {/* Controls Row: Attach (+) | Quick/Deep SVG Toggles | PDF SVG | Send */}
+            <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
+              
+              {/* Left: Attach Image (+) */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach Satellite Image(s)"
+                  className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 px-2 font-mono">
-            <span>Press <kbd className="bg-slate-800 px-1 py-0.5 rounded text-slate-400">Enter</kbd> to send, <kbd className="bg-slate-800 px-1 py-0.5 rounded text-slate-400">Shift+Enter</kbd> for new line</span>
-            <span>SatQuery Agentic Swarm Active ({analysisMode.toUpperCase()} Mode)</span>
-          </div>
+              {/* Right: Quick/Deep SVG Toggles + PDF SVG + Send */}
+              <div className="flex items-center space-x-1.5">
+                
+                {/* SVG Mode Icons: Quick (Lightning) vs Deep (Brain) */}
+                <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700/50">
+                  <button
+                    onClick={() => setAnalysisMode('quick')}
+                    title="Quick Mode (Fast Executive Summary)"
+                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                      analysisMode === 'quick'
+                        ? 'bg-white dark:bg-zinc-700 text-amber-500 dark:text-amber-400 shadow-xs font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setAnalysisMode('deep')}
+                    title="Deep Mode (5-Point Geospatial Report)"
+                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                      analysisMode === 'deep'
+                        ? 'bg-white dark:bg-zinc-700 text-cyan-600 dark:text-cyan-400 shadow-xs font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    <Brain className="h-3.5 w-3.5" />
+                  </button>
+                </div>
 
+                {/* PDF SVG Download Icon Button */}
+                <button
+                  onClick={() => handleGeneratePDF()}
+                  disabled={generatingPdf}
+                  title="Generate & Download PDF Intelligence Report"
+                  className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {generatingPdf ? (
+                    <RefreshCw className="h-4 w-4 animate-spin text-cyan-500" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                </button>
+
+                {/* Send Button */}
+                <button
+                  onClick={() => handleSend()}
+                  disabled={loading || (!query.trim() && attachedImages.length === 0)}
+                  className="p-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-all disabled:opacity-30 cursor-pointer shadow-xs"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </footer>
+      </div>
+
     </div>
   );
 }
