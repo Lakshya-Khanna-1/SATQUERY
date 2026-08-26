@@ -58,21 +58,35 @@ def synthesize_with_gemini(
         
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     
+    is_bitemporal = (task_type.lower() == "change_vqa")
+    
     if analysis_mode.lower() == "deep":
-        mode_instruction = """FORMAT REQUIREMENT: DEEP MODE EXECUTIVE GEOSPATIAL REPORT (Minimum 5 detailed structured sections/lines).
-You must output a highly professional, structured ISRO/SAC executive intelligence report with exact bullet points:
+        if is_bitemporal:
+            mode_instruction = """FORMAT REQUIREMENT: DEEP MODE BI-TEMPORAL CHANGE REPORT (Minimum 5 detailed structured sections).
+You must output a highly professional, structured ISRO/SAC executive bi-temporal change intelligence report with exact bullet points:
 
 - **Baseline Observation (Time 1)**: Describe the specific land-cover, infrastructure, or natural features present in the first satellite observation.
 - **Visual Change Detection (Time 2)**: Detail the precise structural modifications, ground activity, or surface shifts observed in the second satellite scene over time.
 - **Land-Cover & Environmental Impact**: Analyze land conversion, vegetation loss/gain, or built-up structural density shifts based directly on visual evidence.
 - **Spatial Localization & Pattern Analysis**: State the exact spatial placement (e.g. central corridor, lower quadrant, riverbank border) of detected features.
-- **Executive Summary & Confidence**: Conclude with an executive-level operational takeaway and verification status.
+- **Executive Summary & Confidence**: Conclude with an executive-level operational takeaway and verification status."""
+        else:
+            mode_instruction = """FORMAT REQUIREMENT: DEEP MODE SINGLE-IMAGE GEOSPATIAL REPORT (Minimum 4 detailed structured sections).
+You must output a highly professional, structured ISRO/SAC executive single-scene intelligence report with exact bullet points:
 
-Do NOT output generic place-holder text. Base every point directly on the provided satellite images and specialist vision model observations."""
+- **Satellite Optical Scene Overview**: Describe the primary land cover, infrastructure, topography, and surface features observed in this satellite image.
+- **Land-Cover & Feature Composition**: Detail key visible elements such as vegetation density, built-up structures, road networks, or water bodies.
+- **Spatial Feature Distribution**: Detail the spatial orientation and placement of key elements across the image frame.
+- **Executive Summary & Confidence**: Conclude with a clear operational summary of the observed geographic scene.
+
+Do NOT mention bi-temporal comparison, Time 1 vs Time 2, or past years change, as this is a single satellite image query."""
     else:
-        mode_instruction = """FORMAT REQUIREMENT: QUICK MODE (1 to 2 complete, high-density informative sentences).
-Provide a clear, well-formed executive summary sentence in 1 to 2 lines giving complete geospatial context and key findings to the user.
-Do NOT output short 3-4 word incomplete fragments. Ensure the output is a polished, grammatically complete sentence."""
+        if is_bitemporal:
+            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE BI-TEMPORAL CHANGE (1 to 2 complete informative sentences).
+Provide a clear 1 to 2 line executive summary sentence explaining the key land-use and structural changes between Time 1 and Time 2."""
+        else:
+            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE SINGLE-IMAGE SUMMARY (1 to 2 complete informative sentences).
+Provide a clear 1 to 2 line executive summary sentence describing the land cover, key features, and structures in this single satellite image. Do NOT mention bi-temporal comparisons, Time 1/Time 2, or past changes."""
 
     system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing (SIH 2026, PS 26167).
 Your task is to take raw computer vision model predictions and refine them into authoritative, professional, ISRO/SAC judge-winning intelligence reports.
@@ -84,9 +98,9 @@ Specialist Vision Output: "{raw_answer}"
 {mode_instruction}
 
 General System Rules:
-1. Ground every statement strictly in the visual evidence provided in the images and specialist output.
+1. Ground every statement strictly in the visual evidence provided in the image(s) and specialist output.
 2. Never invent non-existent features (e.g. do not mention rural forests if the scene shows urban industrial structures).
-3. If bi-temporal images show no change, explicitly confirm that the structural footprint remains unchanged over time.
+3. If this is a single image query, focus purely on describing the features visible in the single image.
 4. Maintain an authoritative, professional remote-sensing domain tone.
 """
 
