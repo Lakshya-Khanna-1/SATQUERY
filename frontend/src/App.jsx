@@ -17,8 +17,10 @@ import {
   Sun, 
   Moon, 
   Layers,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Globe
 } from 'lucide-react';
+import CoordsModal from './components/CoordsModal';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -31,6 +33,7 @@ export default function App() {
   const [expandedTraces, setExpandedTraces] = useState({});
   const [analysisMode, setAnalysisMode] = useState("quick"); // 'quick' (1-2 sentences) or 'deep' (5+ lines)
   const [showSettings, setShowSettings] = useState(false);
+  const [showCoordsModal, setShowCoordsModal] = useState(false);
 
   // Dark/Light Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -168,6 +171,16 @@ export default function App() {
       window.print();
     } finally {
       setGeneratingPdf(false);
+    }
+  };
+
+  const handleApplyCoords = ({ time1_url, time2_url, lat, lon, radius_km, years_ago, suggested_prompt }) => {
+    setAttachedImages([
+      { id: Date.now(), url: time1_url, role: 'time1' },
+      { id: Date.now() + 1, url: time2_url, role: 'time2' }
+    ]);
+    if (suggested_prompt) {
+      setQuery(suggested_prompt);
     }
   };
 
@@ -651,7 +664,7 @@ export default function App() {
             {/* Controls Row: Attach (+) | Quick/Deep SVG Toggles | PDF SVG | Send */}
             <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
               
-              {/* Left: Attach Image (+) */}
+              {/* Left: Attach Image (+) & COORDS Globe Button */}
               <div className="flex items-center space-x-2">
                 <input
                   type="file"
@@ -667,6 +680,16 @@ export default function App() {
                   className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
+                </button>
+
+                {/* COORDS Globe Button */}
+                <button
+                  onClick={() => setShowCoordsModal(true)}
+                  title="Select Target Satellite Coordinates & Radius"
+                  className="px-2 py-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 text-xs font-mono font-bold flex items-center space-x-1 transition-all cursor-pointer"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  <span>COORDS</span>
                 </button>
               </div>
 
@@ -726,6 +749,14 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Interactive Map & Coordinate Selector Modal */}
+      <CoordsModal 
+        isOpen={showCoordsModal} 
+        onClose={() => setShowCoordsModal(false)} 
+        onApplyCoords={handleApplyCoords} 
+        activeTab={activeTab} 
+      />
 
     </div>
   );
