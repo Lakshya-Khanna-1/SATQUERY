@@ -178,6 +178,8 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
     canvasT1.width = 512;
     canvasT1.height = 512;
     const ctx1 = canvasT1.getContext("2d");
+    ctx1.imageSmoothingEnabled = true;
+    ctx1.imageSmoothingQuality = "high";
     offsets.forEach((off, i) => {
       ctx1.drawImage(loadedT1Tiles[i], off.px, off.py, 256, 256);
     });
@@ -187,6 +189,8 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
     canvasT2.width = 512;
     canvasT2.height = 512;
     const ctx2 = canvasT2.getContext("2d");
+    ctx2.imageSmoothingEnabled = true;
+    ctx2.imageSmoothingQuality = "high";
     offsets.forEach((off, i) => {
       ctx2.drawImage(loadedT2Tiles[i], off.px, off.py, 256, 256);
     });
