@@ -25,64 +25,87 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
   const circleRef = useRef(null);
   const tileLayerRef = useRef(null);
 
-  // Initialize or re-render Leaflet Map
+  // Initialize or re-render Leaflet Map cleanly on modal open/tab switch
   useEffect(() => {
     if (!isOpen || activeSubTab !== "map" || !mapContainerRef.current) return;
 
-    if (window.L && !mapInstanceRef.current) {
-      const L = window.L;
-      
-      const map = L.map(mapContainerRef.current, {
-        center: [lat, lon],
-        zoom: 12,
-        zoomControl: true
-      });
-      mapInstanceRef.current = map;
+    let timer = setTimeout(() => {
+      if (!mapContainerRef.current) return;
 
-      // Add default tile layer
-      const getTileUrl = (style) => {
-        if (style === "satellite") {
-          return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-        } else if (style === "dark") {
-          return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+      // Safely destroy existing map instance if container re-mounted
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn("Clean map removal:", e);
         }
-        return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-      };
+        mapInstanceRef.current = null;
+      }
 
-      const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
-        maxZoom: 18,
-        attribution: '© OpenStreetMap / Esri'
-      }).addTo(map);
-      tileLayerRef.current = tileLayer;
+      if (window.L) {
+        const L = window.L;
+        const map = L.map(mapContainerRef.current, {
+          center: [lat, lon],
+          zoom: 12,
+          zoomControl: true
+        });
+        mapInstanceRef.current = map;
 
-      // Drop initial marker & circle
-      const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
-      markerRef.current = marker;
+        // Add default tile layer
+        const getTileUrl = (style) => {
+          if (style === "satellite") {
+            return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+          } else if (style === "dark") {
+            return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+          }
+          return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+        };
 
-      const circle = L.circle([lat, lon], {
-        radius: (customRadius ? parseFloat(customRadius) : radiusKm) * 1000,
-        color: '#06b6d4',
-        fillColor: '#06b6d4',
-        fillOpacity: 0.15,
-        weight: 2
-      }).addTo(map);
-      circleRef.current = circle;
+        const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
+          maxZoom: 18,
+          attribution: '© OpenStreetMap / Esri'
+        }).addTo(map);
+        tileLayerRef.current = tileLayer;
 
-      // Map click handler to update position
-      map.on('click', (e) => {
-        const { lat: newLat, lng: newLng } = e.latlng;
-        setLat(roundCoord(newLat));
-        setLon(roundCoord(newLng));
-      });
+        // Drop initial marker & circle
+        const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+        markerRef.current = marker;
 
-      marker.on('dragend', () => {
-        const position = marker.getLatLng();
-        setLat(roundCoord(position.lat));
-        setLon(roundCoord(position.lng));
-      });
-    } else if (mapInstanceRef.current) {
-      mapInstanceRef.current.invalidateSize();
-    }
+        const circle = L.circle([lat, lon], {
+          radius: (customRadius ? parseFloat(customRadius) || 5 : radiusKm) * 1000,
+          color: '#06b6d4',
+          fillColor: '#06b6d4',
+          fillOpacity: 0.15,
+          weight: 2
+        }).addTo(map);
+        circleRef.current = circle;
+
+        // Map click handler to update position
+        map.on('click', (e) => {
+          const { lat: newLat, lng: newLng } = e.latlng;
+          setLat(roundCoord(newLat));
+          setLon(roundCoord(newLng));
+        });
+
+        marker.on('dragend', () => {
+          const position = marker.getLatLng();
+          setLat(roundCoord(position.lat));
+          setLon(roundCoord(position.lng));
+        });
+
+        setTimeout(() => map.invalidateSize(), 150);
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {}
+        mapInstanceRef.current = null;
+      }
+    };
   }, [isOpen, activeSubTab]);
 
   // Update map layer style
