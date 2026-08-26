@@ -224,15 +224,14 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
 
       if (response.ok) {
         const data = await response.json();
-        if (data.time1_base64 && data.time2_base64 && data.time1_base64.startsWith("data:image")) {
+        if (data.time2_base64 && data.time2_base64.startsWith("data:image")) {
           onApplyCoords({
+            image_url: data.time2_base64,
             time1_url: data.time1_base64,
-            time2_url: data.time2_base64,
             lat: data.lat,
             lon: data.lon,
             radius_km: data.radius_km,
-            years_ago: data.years_ago,
-            suggested_prompt: `What has changed in the ${data.radius_km} km radius around coordinates (${data.lat}° N, ${data.lon}° E) over the past ${data.years_ago} years?`
+            years_ago: data.years_ago
           });
           onClose();
           return;
@@ -246,13 +245,12 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
       const realTiles = await generateRealSatellitePair(parseFloat(lat), parseFloat(lon), effectiveRadius);
       
       onApplyCoords({
+        image_url: realTiles.t2_url,
         time1_url: realTiles.t1_url,
-        time2_url: realTiles.t2_url,
         lat: roundCoord(lat),
         lon: roundCoord(lon),
         radius_km: effectiveRadius,
-        years_ago: yearsAgo,
-        suggested_prompt: `What has changed in the ${effectiveRadius} km radius around coordinates (${roundCoord(lat)}° N, ${roundCoord(lon)}° E) over the past ${yearsAgo} years?`
+        years_ago: yearsAgo
       });
       onClose();
     } finally {
