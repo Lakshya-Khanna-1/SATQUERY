@@ -183,4 +183,4 @@ def fallback_format(query: str, raw_answer: str, analysis_mode: str = "quick", t
 - **Executive Summary & Confidence**: High-confidence optical VQA vision model observation confirming key geographic surface characteristics."""
 
     # Quick mode fallback: Return clean specialist answer directly
-    return clean_text}"
+    return clean_text
