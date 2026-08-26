@@ -73,5 +73,17 @@ async def webhook_pdf(request: Request):
         raise HTTPException(status_code=502, detail=f"PDF proxy error: {str(e)}")
 
 
+@app.post("/fetch-coords-satellite")
+async def webhook_fetch_coords(request: Request):
+    payload = await request.json()
+    coords_url = ORCHESTRATOR_URL.replace("/query", "/fetch-coords-satellite")
+    try:
+        resp = requests.post(coords_url, json=payload, timeout=15)
+        return Response(content=resp.content, status_code=resp.status_code, media_type="application/json")
+    except Exception as e:
+        logger.warning(f"Connection error during satellite coordinate fetch: {e}")
+        raise HTTPException(status_code=502, detail=f"Coordinate fetch proxy error: {str(e)}")
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=5678, reload=False)

@@ -53,6 +53,13 @@ class PDFRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
+class CoordinatesRequest(BaseModel):
+    lat: float = Field(..., description="Target Latitude")
+    lon: float = Field(..., description="Target Longitude")
+    radius_km: Optional[float] = Field(5.0, description="Bounding radius in kilometers")
+    years_ago: Optional[int] = Field(5, description="Years ago for historical satellite comparison")
+
+
 @app.get("/health")
 def health():
     return {
@@ -61,6 +68,22 @@ def health():
         "framework": "LangGraph",
         "port": 8000
     }
+
+
+@app.post("/fetch-coords-satellite")
+def fetch_coords_satellite(req: CoordinatesRequest):
+    try:
+        from data.satellite_fetcher import fetch_satellite_pair_by_coords
+        data = fetch_satellite_pair_by_coords(
+            lat=req.lat,
+            lon=req.lon,
+            radius_km=req.radius_km or 5.0,
+            years_ago=req.years_ago or 5
+        )
+        return data
+    except Exception as e:
+        logger.error(f"Satellite coordinate fetch failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Satellite fetch error: {str(e)}")
 
 
 @app.post("/query")
