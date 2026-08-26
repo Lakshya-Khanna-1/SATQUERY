@@ -17,9 +17,10 @@ import urllib.request
 from typing import Optional, List
 from PIL import Image as PILImage
 
-logger = logging.getLogger("GeminiSynthesizer")
-
-DEFAULT_API_KEY = os.environ.get("GEMINI_API_KEY", "REDACTED_API_KEY")
+logger = logging.getLogger("GeminiSynthesizer")GEMINI_KEY_POOL = [
+    os.environ.get("GEMINI_API_KEY_1", "REDACTED_API_KEY"),
+    os.environ.get("GEMINI_API_KEY_2", "REDACTED_API_KEY")
+]
 
 def optimize_b64_image(b64_str: str, max_size: int = 384) -> str:
     """Resize base64 image payload to reduce bandwidth and avoid Gemini API 429 rate limits."""
@@ -47,16 +48,10 @@ def synthesize_with_gemini(
 ) -> str:
     """
     Synthesizes raw specialist model predictions into executive-grade geospatial intelligence.
-    Supports Quick Mode (1-2 complete informative sentences) and Deep Mode (structured ISRO/SAC 5+ line analysis).
+    Uses Dual API Key Rotation (Key 1 & Key 2) for zero-downtime failover and max throughput.
     """
     if not raw_answer or not raw_answer.strip():
         return "No visual feature transformation detected across the provided satellite observations."
-    
-    key = api_key or os.environ.get("GEMINI_API_KEY") or DEFAULT_API_KEY
-    if not key:
-        return fallback_format(query, raw_answer, analysis_mode, task_type)
-        
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     
     is_bitemporal = (task_type.lower() == "change_vqa")
     
@@ -86,7 +81,7 @@ Do NOT mention bi-temporal comparison, Time 1 vs Time 2, or past years change, a
 Provide a clear 1 to 2 line executive summary sentence explaining the key land-use and structural changes between Time 1 and Time 2."""
         else:
             mode_instruction = """FORMAT REQUIREMENT: QUICK MODE SINGLE-IMAGE SUMMARY (1 to 2 complete informative sentences).
-Provide a clear 1 to 2 line executive summary sentence describing the land cover, key features, and structures in this single satellite image. Do NOT mention bi-temporal comparisons, Time 1/Time 2, or past changes."""
+Provide a clear 1 to 2 line executive summary sentence describing the exact land cover, water channels, topography, and key features visible in this single satellite image. Do NOT mention bi-temporal comparisons, Time 1/Time 2, or past changes."""
 
     system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing (SIH 2026, PS 26167).
 Your task is to take raw computer vision model predictions and refine them into authoritative, professional, ISRO/SAC judge-winning intelligence reports.
@@ -99,7 +94,7 @@ Specialist Vision Output: "{raw_answer}"
 
 General System Rules:
 1. Ground every statement strictly in the visual evidence provided in the image(s) and specialist output.
-2. Never invent non-existent features (e.g. do not mention rural forests if the scene shows urban industrial structures).
+2. Describe exact visual features in the image (e.g. river channels, coastline, sea, estuarine tidal creeks, urban buildings, roads, green vegetation).
 3. If this is a single image query, focus purely on describing the features visible in the single image.
 4. Maintain an authoritative, professional remote-sensing domain tone.
 """
@@ -127,34 +122,37 @@ General System Rules:
         }
     }
 
-    # Execute request with exponential backoff on 429 rate limits
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=25) as res:
-                res_data = json.loads(res.read().decode("utf-8"))
-                candidates = res_data.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    res_parts = candidates[0]["content"].get("parts", [])
-                    if res_parts and "text" in res_parts[0]:
-                        synthesized = res_parts[0]["text"].strip()
-                        logger.info(f"Successfully synthesized response via Gemini 2.5 Flash (Mode: {analysis_mode})")
-                        return synthesized
-        except urllib.error.HTTPError as http_err:
-            if http_err.code == 429 and attempt < max_retries - 1:
-                logger.warning(f"Gemini API 429 Rate Limit hit. Retrying in 2.0s (Attempt {attempt+1}/{max_retries})...")
-                time.sleep(2.0)
-                continue
-            logger.warning(f"Gemini API HTTP Error {http_err.code}: {http_err.reason}")
-            break
-        except Exception as e:
-            logger.warning(f"Gemini API synthesis exception: {e}")
-            break
+    # Rotate through Dual API Keys (Key 1 -> Key 2) for maximum throughput
+    keys_to_try = [api_key] if api_key else GEMINI_KEY_POOL
+
+    for key_idx, current_key in enumerate(keys_to_try):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={current_key}"
+        
+        for attempt in range(2):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=25) as res:
+                    res_data = json.loads(res.read().decode("utf-8"))
+                    candidates = res_data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        res_parts = candidates[0]["content"].get("parts", [])
+                        if res_parts and "text" in res_parts[0]:
+                            synthesized = res_parts[0]["text"].strip()
+                            logger.info(f"Successfully synthesized response via Gemini 2.5 Flash using Key #{key_idx+1} (Mode: {analysis_mode})")
+                            return synthesized
+            except urllib.error.HTTPError as http_err:
+                if http_err.code == 429:
+                    logger.warning(f"Gemini API Key #{key_idx+1} 429 Rate Limit hit. Failing over to next key...")
+                    break
+                logger.warning(f"Gemini API Key #{key_idx+1} Error {http_err.code}: {http_err.reason}")
+                break
+            except Exception as e:
+                logger.warning(f"Gemini API Key #{key_idx+1} exception: {e}")
+                break
 
     return fallback_format(query, raw_answer, analysis_mode, task_type)
 
@@ -164,16 +162,12 @@ def fallback_format(query: str, raw_answer: str, analysis_mode: str = "quick", t
     trimmed = raw_answer.strip()
     is_bitemporal = (task_type.lower() == "change_vqa")
     
-    # Strip any task brackets or internal fallback artifacts
-    if "executed with fallback" in trimmed or "fallback processing" in trimmed or len(trimmed) < 10:
-        if is_bitemporal:
-            clean_text = "Bi-temporal satellite imagery comparison reveals measurable structural and land-use progression across the observed coordinates, including road network expansion and urban footprint density changes."
-        else:
-            clean_text = "Analysis of the optical satellite scene confirms key geographic surface features, land cover composition, and structural infrastructure across the observed coordinates."
-    elif "[" in trimmed and "]" in trimmed:
-        clean_text = trimmed.split("]:")[-1].strip() if "]:" in trimmed else trimmed
-    else:
-        clean_text = trimmed
+    # Strip internal fallback tags
+    clean_text = trimmed
+    if "Single-Image Optical VQA:" in clean_text:
+        clean_text = clean_text.replace("Single-Image Optical VQA:", "").strip()
+    if "[" in clean_text and "]" in clean_text and "Query:" in clean_text:
+        clean_text = clean_text.split("[Query:")[0].strip()
 
     if analysis_mode.lower() == "deep":
         if is_bitemporal:
@@ -188,12 +182,5 @@ def fallback_format(query: str, raw_answer: str, analysis_mode: str = "quick", t
 - **Spatial Feature Distribution**: Primary infrastructure, built-up parcels, and vegetation patterns are oriented across the central corridor.
 - **Executive Summary & Confidence**: High-confidence optical VQA vision model observation confirming key geographic surface characteristics."""
 
-    # Quick mode fallback: Return clean specialist answer directly without double prefixes
-    if is_bitemporal:
-        if "Bi-temporal" in clean_text or "comparison" in clean_text:
-            return clean_text
-        return f"Bi-temporal satellite observation confirms: {clean_text}"
-    else:
-        if any(clean_text.startswith(prefix) for prefix in ["Satellite", "Analysis", "Prominent", "High-density", "Dense", "Low-reflectance", "Composite", "Clear", "Open"]):
-            return clean_text
-        return f"Satellite optical scene analysis confirms: {clean_text}"
+    # Quick mode fallback: Return clean specialist answer directly
+    return clean_text}"
