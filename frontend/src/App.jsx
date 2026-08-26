@@ -174,14 +174,20 @@ export default function App() {
     }
   };
 
-  const handleApplyCoords = ({ time1_url, time2_url, lat, lon, radius_km, years_ago, suggested_prompt }) => {
+  const handleApplyCoords = ({ image_url, time1_url, lat, lon, radius_km, years_ago }) => {
+    const mainImg = image_url || time1_url;
     setAttachedImages([
-      { id: Date.now(), url: time1_url, role: 'time1' },
-      { id: Date.now() + 1, url: time2_url, role: 'time2' }
+      { 
+        id: Date.now(), 
+        url: mainImg, 
+        role: 'optical',
+        lat,
+        lon,
+        radius_km,
+        years_ago
+      }
     ]);
-    if (suggested_prompt) {
-      setQuery(suggested_prompt);
-    }
+    setQuery("");
   };
 
   const handleSend = async (overrideQuery = null) => {
