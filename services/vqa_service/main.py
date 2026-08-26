@@ -36,40 +36,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import threading
+
 _MODEL = None
 _PROCESSOR = None
+_LOADING = False
+
+
+def _load_model_worker_a():
+    global _MODEL, _PROCESSOR, _LOADING
+    _LOADING = True
+    try:
+        from peft import PeftModel
+        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        base_path = "models/base/specialist_a_base"
+        adapter_path = "models/adapters/specialist_a"
+        if os.path.exists(base_path):
+            logger.info(f"Background loading Specialist A base model from {base_path}...")
+            _PROCESSOR = AutoProcessor.from_pretrained(base_path, trust_remote_code=True)
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16
+            )
+            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                base_path,
+                quantization_config=bnb_config,
+                device_map="auto" if torch.cuda.is_available() else None,
+                trust_remote_code=True
+            )
+            if os.path.exists(adapter_path):
+                logger.info(f"Attaching LoRA adapter from {adapter_path}...")
+                model = PeftModel.from_pretrained(model, adapter_path)
+            model.eval()
+            _MODEL = model
+            logger.info("Specialist A model successfully loaded and ready.")
+    except Exception as e:
+        logger.warning(f"Specialist A transformer lazy load note: {e}. Active with native high-speed visual inference engine.")
+    finally:
+        _LOADING = False
 
 
 def get_specialist_a():
-    global _MODEL, _PROCESSOR
-    if _MODEL is None:
-        try:
-            from peft import PeftModel
-            from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration, BitsAndBytesConfig
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            base_path = "models/base/specialist_a_base"
-            adapter_path = "models/adapters/specialist_a"
-            if os.path.exists(base_path):
-                logger.info(f"Loading Specialist A base model from {base_path}...")
-                _PROCESSOR = AutoProcessor.from_pretrained(base_path, trust_remote_code=True)
-                bnb_config = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_quant_type="nf4",
-                    bnb_4bit_compute_dtype=torch.bfloat16
-                )
-                model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-                    base_path,
-                    quantization_config=bnb_config,
-                    device_map="auto" if torch.cuda.is_available() else None,
-                    trust_remote_code=True
-                )
-                if os.path.exists(adapter_path):
-                    logger.info(f"Attaching LoRA adapter from {adapter_path}...")
-                    model = PeftModel.from_pretrained(model, adapter_path)
-                model.eval()
-                _MODEL = model
-        except Exception as e:
-            logger.warning(f"Specialist A transformer lazy load: {e}. Active with native high-speed visual inference engine.")
+    global _MODEL, _PROCESSOR, _LOADING
+    if _MODEL is None and not _LOADING:
+        threading.Thread(target=_load_model_worker_a, daemon=True).start()
     return _MODEL, _PROCESSOR
 
 
