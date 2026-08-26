@@ -119,7 +119,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
 
   const effectiveRadius = customRadius ? parseFloat(customRadius) || 5 : radiusKm;
 
-  // Client-side real satellite tile stitcher (Guaranteed real imagery from Esri World Imagery)
+  // Client-side real satellite tile stitcher (Genuine Historical Sentinel-2 for Time 1 & Esri for Time 2)
   const generateRealSatellitePair = async (targetLat, targetLon, radius) => {
     let zoom = 15;
     if (radius <= 2) zoom = 16;
@@ -137,28 +137,50 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
       { dx: 0, dy: 0, px: 256, py: 256 }
     ];
 
-    const loadTile = (url) => new Promise((resolve) => {
+    const loadTile = (url, fallbackColor) => new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => {
-        // High quality procedural satellite synthetic patch if offline
         const c = document.createElement("canvas");
         c.width = 256; c.height = 256;
         const ctx = c.getContext("2d");
-        ctx.fillStyle = "#1e293b";
+        ctx.fillStyle = fallbackColor || "#1e293b";
         ctx.fillRect(0, 0, 256, 256);
         resolve(c);
       };
       img.src = url;
     });
 
-    const tilePromises = offsets.map((off) => {
-      const tileUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${centerTileY + off.dy}/${centerTileX + off.dx}`;
-      return loadTile(tileUrl);
+    const parsedYears = parseInt(yearsAgo) || 5;
+    const currentYear = new Date().getFullYear();
+    const historicalYear = Math.max(2017, Math.min(2023, currentYear - parsedYears));
+
+    // Time 1: Genuine Historical ESA Sentinel-2 Cloudless Archive
+    const t1TilePromises = offsets.map((off) => {
+      const histUrl = `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-${historicalYear}_3857/default/GoogleMapsCompatible/${zoom}/${centerTileY + off.dy}/${centerTileX + off.dx}.jpg`;
+      return loadTile(histUrl, "#2d3748");
     });
 
-    const loadedTiles = await Promise.all(tilePromises);
+    // Time 2: Present Day High-Resolution Satellite Scene (Esri World Imagery)
+    const t2TilePromises = offsets.map((off) => {
+      const presentUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${centerTileY + off.dy}/${centerTileX + off.dx}`;
+      return loadTile(presentUrl, "#1a202c");
+    });
+
+    const [loadedT1Tiles, loadedT2Tiles] = await Promise.all([
+      Promise.all(t1TilePromises),
+      Promise.all(t2TilePromises)
+    ]);
+
+    // Canvas Time 1 (Historical Baseline Scene - e.g. 5 Years Ago)
+    const canvasT1 = document.createElement("canvas");
+    canvasT1.width = 512;
+    canvasT1.height = 512;
+    const ctx1 = canvasT1.getContext("2d");
+    offsets.forEach((off, i) => {
+      ctx1.drawImage(loadedT1Tiles[i], off.px, off.py, 256, 256);
+    });
 
     // Canvas Time 2 (Present High-Resolution Satellite Scene)
     const canvasT2 = document.createElement("canvas");
@@ -166,29 +188,8 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
     canvasT2.height = 512;
     const ctx2 = canvasT2.getContext("2d");
     offsets.forEach((off, i) => {
-      ctx2.drawImage(loadedTiles[i], off.px, off.py, 256, 256);
+      ctx2.drawImage(loadedT2Tiles[i], off.px, off.py, 256, 256);
     });
-
-    // Canvas Time 1 (Historical Baseline Scene - e.g. 5 Years Ago)
-    const canvasT1 = document.createElement("canvas");
-    canvasT1.width = 512;
-    canvasT1.height = 512;
-    const ctx1 = canvasT1.getContext("2d");
-    ctx1.drawImage(canvasT2, 0, 0);
-
-    // Apply realistic historical spectral shift (dense vegetation canopy vs prior non-paved land)
-    try {
-      const imgData = ctx1.getImageData(0, 0, 512, 512);
-      const data = imgData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = Math.max(0, data[i] * 0.86);     // Red
-        data[i + 1] = Math.min(255, data[i + 1] * 1.18); // Green (canopy signature)
-        data[i + 2] = Math.max(0, data[i + 2] * 0.84); // Blue
-      }
-      ctx1.putImageData(imgData, 0, 0);
-    } catch (e) {
-      console.warn("Canvas pixel filter notice:", e);
-    }
 
     return {
       t1_url: canvasT1.toDataURL("image/png"),
