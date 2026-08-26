@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.pairing import check_spatial_alignment, align_image_pair
-from orchestrator.gemini_synthesizer import synthesize_with_gemini
+from orchestrator.gemini_synthesizer import synthesize_with_gemini, classify_intent_with_gemini
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("LangGraphOrchestrator")
