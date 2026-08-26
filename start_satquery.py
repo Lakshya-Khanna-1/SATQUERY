@@ -53,7 +53,15 @@ def main():
         )
         processes.append(proc_b)
 
-        # 3. LangGraph Orchestrator (Port 8000)
+        # 3. Specialist C (Port 8003)
+        proc_c = start_service(
+            "Specialist C (Optical-SAR Fusion :8003)",
+            f'"{venv_python}" services/fusion_service/main.py',
+            root_dir
+        )
+        processes.append(proc_c)
+
+        # 4. LangGraph Orchestrator (Port 8000)
         proc_orch = start_service(
             "Multi-Agent Orchestrator API (:8000)",
             f'"{venv_python}" orchestrator/main.py',
