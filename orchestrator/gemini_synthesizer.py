@@ -188,12 +188,12 @@ def fallback_format(query: str, raw_answer: str, analysis_mode: str = "quick", t
 - **Spatial Feature Distribution**: Primary infrastructure, built-up parcels, and vegetation patterns are oriented across the central corridor.
 - **Executive Summary & Confidence**: High-confidence optical VQA vision model observation confirming key geographic surface characteristics."""
 
-    # Quick mode fallback: Ensure complete, informative sentence
+    # Quick mode fallback: Return clean specialist answer directly without double prefixes
     if is_bitemporal:
         if "Bi-temporal" in clean_text or "comparison" in clean_text:
             return clean_text
         return f"Bi-temporal satellite observation confirms: {clean_text}"
     else:
-        if "Bi-temporal" in clean_text:
-            clean_text = "High-resolution satellite observation confirms key geographic land features and infrastructure."
+        if any(clean_text.startswith(prefix) for prefix in ["Satellite", "Analysis", "Prominent", "High-density", "Dense", "Low-reflectance", "Composite", "Clear", "Open"]):
+            return clean_text
         return f"Satellite optical scene analysis confirms: {clean_text}"
