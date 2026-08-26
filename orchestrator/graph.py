@@ -137,9 +137,10 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
     if task_type in ["vqa", "caption", "grounding"]:
         specialists = ["specialist_a"]
     elif task_type == "change_vqa":
-        # Call both Specialist B (linguistic reasoning) and Specialist C (pixel overlay)
-        specialists = ["specialist_b", "specialist_c"]
+        # Dedicated Bi-Temporal Change-VQA Specialist
+        specialists = ["specialist_b"]
     elif task_type == "fusion":
+        # Dedicated Optical-SAR Cross-Modal Fusion Specialist
         specialists = ["specialist_c"]
     else:
         specialists = ["specialist_a"]
