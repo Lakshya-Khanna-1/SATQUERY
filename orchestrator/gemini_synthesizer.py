@@ -17,7 +17,9 @@ import urllib.request
 from typing import Optional, List
 from PIL import Image as PILImage
 
-logger = logging.getLogger("GeminiSynthesizer")GEMINI_KEY_POOL = [
+logger = logging.getLogger("GeminiSynthesizer")
+
+GEMINI_KEY_POOL = [
     os.environ.get("GEMINI_API_KEY_1", "REDACTED_API_KEY"),
     os.environ.get("GEMINI_API_KEY_2", "REDACTED_API_KEY")
 ]
