@@ -36,7 +36,10 @@ def fetch_tile_image(zoom: int, x: int, y: int, is_historical: bool = False, yea
             req = urllib.request.Request(hist_url, headers=headers)
             with urllib.request.urlopen(req, timeout=5) as response:
                 img_data = response.read()
-                return Image.open(io.BytesIO(img_data)).convert("RGB")
+                img = Image.open(io.BytesIO(img_data)).convert("RGB")
+                # Apply high-pass sharpening to ensure zero blur and sharp edges
+                img = img.filter(ImageFilter.UnsharpMask(radius=1.8, percent=140, threshold=2))
+                return img
         except Exception:
             pass
 
@@ -50,6 +53,7 @@ def fetch_tile_image(zoom: int, x: int, y: int, is_historical: bool = False, yea
             if is_historical:
                 enhancer = ImageEnhance.Color(img)
                 img = enhancer.enhance(1.25)
+                img = img.filter(ImageFilter.UnsharpMask(radius=1.5, percent=120, threshold=2))
             return img
     except Exception as e:
         fallback = Image.new("RGB", (256, 256), color=(34, 55, 42) if is_historical else (45, 62, 80))
