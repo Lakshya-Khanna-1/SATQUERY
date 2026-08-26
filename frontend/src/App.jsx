@@ -548,6 +548,36 @@ export default function App() {
                     </button>
                   </div>
 
+                  {/* Bi-Temporal Satellite Rasters Confirmation Panel */}
+                  {msg.raw_images && msg.raw_images.length > 0 && (
+                    <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+                        <span className="flex items-center space-x-1.5 font-bold text-zinc-700 dark:text-zinc-300">
+                          <Globe className="h-3.5 w-3.5 text-cyan-500" />
+                          <span>Satellite Imagery Observations ({msg.raw_images.length >= 2 ? "Bi-Temporal Pair" : "Single Optical Scene"})</span>
+                        </span>
+                        <span className="text-[10px] bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+                          Real Geospatial Data
+                        </span>
+                      </div>
+
+                      <div className={`grid gap-3 ${msg.raw_images.length >= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                        {msg.raw_images.map((imgUrl, i) => (
+                          <div key={i} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group bg-zinc-900">
+                            <img 
+                              src={imgUrl} 
+                              alt={`Satellite Scene ${i+1}`} 
+                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105" 
+                            />
+                            <div className="absolute top-2 left-2 bg-black/80 text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-bold backdrop-blur-xs">
+                              {msg.raw_images.length >= 2 ? (i === 0 ? "Time 1 (Baseline / Historical)" : "Time 2 (Present Day)") : "Optical Satellite Scene"}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Visual Evidence RGBA Overlay (if available) */}
                   {msg.evidence_image && (
                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 space-y-2">
