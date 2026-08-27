@@ -55,8 +55,6 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
         const getTileUrl = (style) => {
           if (style === "satellite") {
             return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-          } else if (style === "dark") {
-            return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
           }
           return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
         };
@@ -115,9 +113,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
       mapInstanceRef.current.removeLayer(tileLayerRef.current);
       
       let newUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-      if (mapStyle === "dark") {
-        newUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-      } else if (mapStyle === "street") {
+      if (mapStyle === "street") {
         newUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       }
 
@@ -327,7 +323,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
             </button>
           </div>
 
-          {/* Map Layer Switcher (Satellite, Dark, Street) */}
+          {/* Map Layer Switcher (Satellite, Street) */}
           {activeSubTab === "map" && (
             <div className="flex items-center space-x-1 pr-1 text-[11px]">
               <button
@@ -335,12 +331,6 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
                 className={`px-2 py-0.5 rounded-md ${mapStyle === "satellite" ? "bg-cyan-500 text-white font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 Real
-              </button>
-              <button
-                onClick={() => setMapStyle("dark")}
-                className={`px-2 py-0.5 rounded-md ${mapStyle === "dark" ? "bg-cyan-500 text-white font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
-              >
-                Black
               </button>
               <button
                 onClick={() => setMapStyle("street")}
