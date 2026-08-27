@@ -303,7 +303,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveSubTab("map")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeSubTab === "map"
                   ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
@@ -313,7 +313,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
             </button>
             <button
               onClick={() => setActiveSubTab("manual")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeSubTab === "manual"
                   ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
@@ -328,13 +328,13 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
             <div className="flex items-center space-x-1 pr-1 text-[11px]">
               <button
                 onClick={() => setMapStyle("satellite")}
-                className={`px-2 py-0.5 rounded-md ${mapStyle === "satellite" ? "bg-cyan-500 text-white font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
+                className={`impeccable-btn px-2.5 py-1 rounded-md font-medium transition-all ${mapStyle === "satellite" ? "bg-cyan-500 text-white font-bold shadow-xs" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 Real
               </button>
               <button
                 onClick={() => setMapStyle("street")}
-                className={`px-2 py-0.5 rounded-md ${mapStyle === "street" ? "bg-cyan-500 text-white font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
+                className={`impeccable-btn px-2.5 py-1 rounded-md font-medium transition-all ${mapStyle === "street" ? "bg-cyan-500 text-white font-bold shadow-xs" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 Street
               </button>
