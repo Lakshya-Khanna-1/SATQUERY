@@ -2,31 +2,32 @@
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    letter-spacing: -0.011em;
   }
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
 }
 
-/* Custom scrollbars */
+/* Impeccable Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(161, 161, 170, 0.2);
+  background: rgba(161, 161, 170, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(161, 161, 170, 0.4);
+  background: rgba(6, 182, 212, 0.5);
 }
 
-/* Dark/Light mode theme background tokens */
+/* Impeccable Dark/Light Theme Tokens */
 html.dark {
   color-scheme: dark;
   background-color: #09090b;
@@ -34,22 +35,33 @@ html.dark {
 
 html:not(.dark) {
   color-scheme: light;
-  background-color: #ffffff;
+  background-color: #fcfcfd;
 }
 
-/* Glassmorphism & UI utilities */
+/* Impeccable Micro-Interaction Utilities */
+.impeccable-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.impeccable-btn:active {
+  transform: scale(0.97);
+}
+
+.impeccable-card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Glassmorphism Surface Tokens */
 .glass-nav {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.glass-input {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-.glass-card {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.glass-input {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
+.glass-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
