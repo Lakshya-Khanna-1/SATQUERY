@@ -355,7 +355,7 @@ export default function App() {
             {/* About Button (Placeholder for future About page) */}
             <button
               onClick={() => {}}
-              className="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer"
+              className="impeccable-btn text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer"
             >
               About
             </button>
@@ -364,7 +364,7 @@ export default function App() {
             <button
               onClick={() => setShowSettings(true)}
               title="System Settings & Telemetry"
-              className="p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer"
+              className="impeccable-btn p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer"
             >
               <Settings className="h-4 w-4" />
             </button>
@@ -373,7 +373,7 @@ export default function App() {
             <button
               onClick={() => setDarkMode(!darkMode)}
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              className="relative p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer overflow-hidden"
+              className="impeccable-btn relative p-1.5 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer overflow-hidden"
             >
               <div className="relative h-4 w-4">
                 <Sun className={`h-4 w-4 absolute inset-0 transition-transform duration-500 ease-out ${darkMode ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100 text-amber-500'}`} />
