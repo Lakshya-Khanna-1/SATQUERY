@@ -82,22 +82,33 @@ def classify_task(state: AgentState) -> AgentState:
         import re
         from data.satellite_fetcher import fetch_satellite_pair_by_coords
         
-        coord_match = re.search(r"(\d+\.\d+)\s*°?\s*N?.*,?\s*(\d+\.\d+)\s*°?\s*E?", query)
-        lat, lon = (23.0225, 72.5714)
-        if coord_match:
-            try:
-                lat = float(coord_match.group(1))
-                lon = float(coord_match.group(2))
-            except Exception:
-                pass
+        meta = state.get("metadata", {}) or {}
+        lat = meta.get("lat")
+        lon = meta.get("lon")
+        radius_km = meta.get("radius_km", 5.0)
+        years_ago = meta.get("years_ago", 5)
+
+        if lat is None or lon is None:
+            coord_match = re.search(r"(\d+\.\d+)\s*°?\s*N?.*,?\s*(\d+\.\d+)\s*°?\s*E?", query)
+            if coord_match:
+                try:
+                    lat = float(coord_match.group(1))
+                    lon = float(coord_match.group(2))
+                except Exception:
+                    lat, lon = (23.0225, 72.5714)
+            else:
+                lat, lon = (23.0225, 72.5714)
         
         years_match = re.search(r"(\d+)\s*years?", q_lower)
-        years_ago = int(years_match.group(1)) if years_match else 5
+        if years_match:
+            years_ago = int(years_match.group(1))
         
         logger.info(f"Auto-fetching historical satellite baseline for coordinates ({lat}, {lon}), {years_ago} years ago...")
-        satellite_data = fetch_satellite_pair_by_coords(lat=lat, lon=lon, radius_km=5.0, years_ago=years_ago)
+        satellite_data = fetch_satellite_pair_by_coords(lat=float(lat), lon=float(lon), radius_km=float(radius_km), years_ago=int(years_ago))
         
-        images = [satellite_data["time1_base64"], satellite_data["time2_base64"]]
+        # Historical baseline is Time 1, present observation is Time 2
+        present_img = images[0] if img_count > 0 else satellite_data["time2_base64"]
+        images = [satellite_data["time1_base64"], present_img]
         state["images"] = images
     else:
         # Single Image VQA / Caption / Grounding

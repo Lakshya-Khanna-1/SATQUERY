@@ -298,30 +298,20 @@ export default function App() {
     }
   };
 
-  const handleApplyCoords = ({ image_url, time1_url, lat, lon, radius_km, years_ago }) => {
-    const t1 = time1_url || image_url;
-    const t2 = image_url || time1_url;
+  const handleApplyCoords = ({ image_url, lat, lon, radius_km, years_ago }) => {
+    // Attach single present optical scene with location metadata
     setAttachedImages([
       { 
-        id: Date.now() - 1, 
-        url: t1, 
-        role: 'time1',
-        lat,
-        lon,
-        radius_km,
-        years_ago
-      },
-      { 
         id: Date.now(), 
-        url: t2, 
-        role: 'time2',
+        url: image_url, 
+        role: 'optical',
         lat,
         lon,
         radius_km,
         years_ago
       }
     ]);
-    setQuery(`Analyze the bi-temporal structural and land-cover changes at coordinates (${lat}, ${lon}) comparing historical baseline with recent satellite observation.`);
+    setQuery("");
   };
 
   const handleSend = async (overrideQuery = null) => {
@@ -342,6 +332,9 @@ export default function App() {
 
     setMessages(prev => [...prev, userMessage]);
     saveMessageToDB(userMessage);
+    
+    // Extract metadata before clearing attached images
+    const imgMeta = attachedImages[0] || {};
     setQuery("");
     setAttachedImages([]);
     setLoading(true);
@@ -360,6 +353,10 @@ export default function App() {
         images: orderedUrls,
         analysis_mode: analysisMode,
         metadata: {
+          lat: imgMeta.lat,
+          lon: imgMeta.lon,
+          radius_km: imgMeta.radius_km,
+          years_ago: imgMeta.years_ago,
           timestamp: new Date().toISOString(),
           source: "satquery_chat_ui",
           crs: "EPSG:32632"

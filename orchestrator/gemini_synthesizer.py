@@ -48,11 +48,19 @@ def classify_intent_with_gemini(query: str) -> str:
     q_lower = query.lower()
     
     # Fast pre-checks for instant response
-    if any(w in q_lower for w in ["sar", "radar", "segmentation", "lulc"]):
+    if any(w in q_lower for w in ["sar", "radar", "segmentation", "lulc", "microwave"]):
         return "SAR_FUSION"
-    if any(w in q_lower for w in ["what has changed", "past 5 years", "historical", "before and after", "change over time", "temporal", "urban growth", "deforestation"]):
+    if any(w in q_lower for w in [
+        "what has changed", "changed", "change", "past", "history", "historical", 
+        "years ago", "years", "before and after", "change over time", "temporal", 
+        "urban growth", "deforestation", "previous", "earlier", "evolution", "expansion"
+    ]):
         return "BITEMPORAL_CHANGE"
-    if any(w in q_lower for w in ["describe", "water percentage", "vegetation", "buildings", "where is", "what is here", "land cover", "features"]):
+    if any(w in q_lower for w in [
+        "describe", "water percentage", "vegetation", "buildings", "where is", 
+        "what is here", "what vehicle", "what aircraft", "how many", "land cover", 
+        "features", "identify", "find", "count", "segment"
+    ]):
         return "SINGLE_IMAGE_VQA"
 
     system_prompt = f"""You are an intent classification engine for an Earth Observation satellite analysis platform.
