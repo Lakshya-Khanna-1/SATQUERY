@@ -77,11 +77,11 @@ def main():
         )
         processes.append(proc_n8n)
 
-        # 5. React Frontend (Port 3000)
+        # 5. React Frontend (Port 3010)
         frontend_dir = os.path.join(root_dir, "frontend")
         if os.path.exists(frontend_dir):
             proc_ui = start_service(
-                "SatQuery Web App UI (:3000)",
+                "SatQuery Web App UI (:3010)",
                 "npm run dev",
                 frontend_dir
             )
@@ -89,14 +89,14 @@ def main():
 
         print("\n" + "=" * 65)
         print("[+] All SatQuery Microservices Successfully Activated!")
-        print("   - Web Chat Interface: http://localhost:3000")
+        print("   - Web Chat Interface: http://localhost:3010")
         print("   - n8n Webhook Proxy: http://127.0.0.1:5678/satquery")
         print("   - Orchestrator API: http://127.0.0.1:8000/query")
         print("=" * 65)
         print("Press Ctrl+C to stop all services.\n")
 
         time.sleep(3)
-        webbrowser.open("http://localhost:3000")
+        webbrowser.open("http://localhost:3010")
 
         for proc in processes:
             proc.wait()

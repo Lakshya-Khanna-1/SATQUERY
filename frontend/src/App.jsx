@@ -21,6 +21,7 @@ import {
   Globe
 } from 'lucide-react';
 import CoordsModal from './components/CoordsModal';
+import Sidebar from './components/Sidebar';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -34,6 +35,11 @@ export default function App() {
   const [analysisMode, setAnalysisMode] = useState("quick"); // 'quick' (1-2 sentences) or 'deep' (5+ lines)
   const [showSettings, setShowSettings] = useState(false);
   const [showCoordsModal, setShowCoordsModal] = useState(false);
+
+  // Persistent Local Memory & Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Collapsed by default
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(() => `session_${Date.now()}`);
 
   // Dark/Light Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -52,6 +58,122 @@ export default function App() {
       localStorage.setItem('satquery_theme', 'light');
     }
   }, [darkMode]);
+
+  // Fetch all saved persistent sessions from SQLite database
+  const fetchSessions = async () => {
+    const targetUrl = activeTab === "n8n" 
+      ? "http://127.0.0.1:5678/sessions" 
+      : "http://127.0.0.1:8000/sessions";
+
+    try {
+      const res = await fetch(targetUrl);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data);
+        localStorage.setItem('satquery_sessions', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.info("Fetching sessions from local storage cache:", err);
+      const cached = localStorage.getItem('satquery_sessions');
+      if (cached) {
+        try { setSessions(JSON.parse(cached)); } catch (e) {}
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, [activeTab]);
+
+  // Handle starting a fresh new chat session
+  const handleNewChat = () => {
+    const newId = `session_${Date.now()}`;
+    setActiveSessionId(newId);
+    setMessages([]);
+    setAttachedImages([]);
+    setQuery("");
+  };
+
+  // Load selected session from SQLite database
+  const handleSelectSession = async (sessionId) => {
+    setActiveSessionId(sessionId);
+    const targetUrl = activeTab === "n8n"
+      ? `http://127.0.0.1:5678/sessions/${sessionId}`
+      : `http://127.0.0.1:8000/sessions/${sessionId}`;
+
+    try {
+      const res = await fetch(targetUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages) {
+          setMessages(data.messages);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load session details from DB:", err);
+    }
+  };
+
+  // Toggle pinning mechanism for a session
+  const handleTogglePin = async (sessionId, e) => {
+    if (e) e.stopPropagation();
+    const targetUrl = activeTab === "n8n"
+      ? `http://127.0.0.1:5678/sessions/${sessionId}/pin`
+      : `http://127.0.0.1:8000/sessions/${sessionId}/pin`;
+
+    // Optimistic UI update
+    setSessions(prev => prev.map(s => {
+      if (s.id === sessionId) {
+        return { ...s, is_pinned: s.is_pinned === 1 ? 0 : 1 };
+      }
+      return s;
+    }));
+
+    try {
+      await fetch(targetUrl, { method: "PUT" });
+      fetchSessions();
+    } catch (err) {
+      console.warn("Pin toggle sync warning:", err);
+    }
+  };
+
+  // Delete a session permanently from local database
+  const handleDeleteSession = async (sessionId, e) => {
+    if (e) e.stopPropagation();
+    const targetUrl = activeTab === "n8n"
+      ? `http://127.0.0.1:5678/sessions/${sessionId}`
+      : `http://127.0.0.1:8000/sessions/${sessionId}`;
+
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      handleNewChat();
+    }
+
+    try {
+      await fetch(targetUrl, { method: "DELETE" });
+      fetchSessions();
+    } catch (err) {
+      console.warn("Delete session sync warning:", err);
+    }
+  };
+
+  // Save a message persistently to SQLite local database
+  const saveMessageToDB = async (msg) => {
+    const targetUrl = activeTab === "n8n"
+      ? `http://127.0.0.1:5678/sessions/${activeSessionId}/messages`
+      : `http://127.0.0.1:8000/sessions/${activeSessionId}/messages`;
+
+    try {
+      await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(msg)
+      });
+      fetchSessions();
+    } catch (err) {
+      console.warn("Failed to persist message to DB:", err);
+    }
+  };
 
   const fileInputRef = useRef(null);
   const chatBottomRef = useRef(null);
@@ -207,6 +329,7 @@ export default function App() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    saveMessageToDB(userMessage);
     setQuery("");
     setAttachedImages([]);
     setLoading(true);
@@ -268,6 +391,7 @@ export default function App() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      saveMessageToDB(assistantMessage);
 
     } catch (err) {
       console.warn("Direct service unreachable, generating specialized inference response:", err);
@@ -321,6 +445,7 @@ export default function App() {
       };
 
       setMessages(prev => [...prev, fallbackAssistantMessage]);
+      saveMessageToDB(fallbackAssistantMessage);
     } finally {
       setLoading(false);
       setStepStatus("");
@@ -335,8 +460,24 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased selection:bg-cyan-500/20">
+    <div className={`min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased selection:bg-cyan-500/20 transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-16'}`}>
       
+      {/* Vertical Navigation Bar (Collapsed by default, Expandable on toggle/click) */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        onTogglePin={handleTogglePin}
+        onDeleteSession={handleDeleteSession}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        onOpenSettings={() => setShowSettings(true)}
+        onOpenCoords={() => setShowCoordsModal(true)}
+      />
+
       {/* Centered Floating Glassmorphism Navbar */}
       <header className="sticky top-0 z-40 px-4 pt-3 pb-1">
         <div className="max-w-5xl mx-auto rounded-full glass-nav bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs px-4 py-2 flex items-center justify-between transition-colors">

@@ -85,5 +85,24 @@ async def webhook_fetch_coords(request: Request):
         raise HTTPException(status_code=502, detail=f"Coordinate fetch proxy error: {str(e)}")
 
 
+@app.api_route("/sessions{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def webhook_sessions_proxy(request: Request, path: str):
+    target_url = ORCHESTRATOR_URL.replace("/query", f"/sessions{path}")
+    method = request.method
+    try:
+        body = await request.body()
+        resp = requests.request(
+            method=method,
+            url=target_url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            timeout=20
+        )
+        return Response(content=resp.content, status_code=resp.status_code, media_type="application/json")
+    except Exception as e:
+        logger.warning(f"Proxy error for sessions: {e}")
+        raise HTTPException(status_code=502, detail=f"Sessions proxy error: {str(e)}")
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=5678, reload=False)

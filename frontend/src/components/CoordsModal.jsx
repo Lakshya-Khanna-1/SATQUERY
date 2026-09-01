@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Globe, MapPin, Navigation, Check, X, Layers, RefreshCw, Compass } from 'lucide-react';
+import { Globe, MapPin, Map, Navigation, Check, X, Layers, RefreshCw, Compass } from 'lucide-react';
 
 const PRESET_LOCATIONS = [
   { name: "ISRO Space Applications Centre (SAC), Ahmedabad", lat: 23.0225, lon: 72.5714 },
@@ -303,23 +303,25 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveSubTab("map")}
-              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
                 activeSubTab === "map"
                   ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
               }`}
             >
-              🗺️ Choose on Map
+              <Map className="h-3.5 w-3.5 text-cyan-500" />
+              <span>Choose on Map</span>
             </button>
             <button
               onClick={() => setActiveSubTab("manual")}
-              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`impeccable-btn px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
                 activeSubTab === "manual"
                   ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
               }`}
             >
-              📍 Enter Manually
+              <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Enter Manually</span>
             </button>
           </div>
 

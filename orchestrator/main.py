@@ -141,5 +141,82 @@ def generate_pdf_report(req: PDFRequest):
         raise HTTPException(status_code=500, detail=f"PDF generation error: {str(e)}")
 
 
+# -----------------------------------------------------------------------------
+# PERSISTENT LOCAL MEMORY DATABASE ENDPOINTS (SQLite)
+# -----------------------------------------------------------------------------
+
+@app.get("/sessions")
+def list_sessions():
+    try:
+        from data.database import get_all_sessions
+        return get_all_sessions()
+    except Exception as e:
+        logger.error(f"Failed to fetch sessions: {e}")
+        return []
+
+
+@app.post("/sessions")
+def new_session(payload: Dict[str, Any] = None):
+    try:
+        from data.database import create_session
+        title = payload.get("title", "New Analysis Session") if payload else "New Analysis Session"
+        return create_session(title=title)
+    except Exception as e:
+        logger.error(f"Failed to create session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions/{session_id}")
+def fetch_session(session_id: str):
+    try:
+        from data.database import get_session_detail
+        s = get_session_detail(session_id)
+        if not s:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return s
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch session detail: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sessions/{session_id}/messages")
+def post_session_message(session_id: str, msg: Dict[str, Any]):
+    try:
+        from data.database import save_message
+        saved = save_message(session_id, msg)
+        return saved
+    except Exception as e:
+        logger.error(f"Failed to save message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/sessions/{session_id}/pin")
+def pin_session(session_id: str):
+    try:
+        from data.database import toggle_pin_session
+        res = toggle_pin_session(session_id)
+        if not res:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return res
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to toggle pin on session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/sessions/{session_id}")
+def remove_session(session_id: str):
+    try:
+        from data.database import delete_session
+        delete_session(session_id)
+        return {"status": "success", "id": session_id}
+    except Exception as e:
+        logger.error(f"Failed to delete session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
