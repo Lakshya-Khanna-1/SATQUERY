@@ -117,31 +117,29 @@ def synthesize_with_gemini(
     
     if analysis_mode.lower() == "deep":
         if is_bitemporal:
-            mode_instruction = """FORMAT REQUIREMENT: DEEP MODE BI-TEMPORAL CHANGE REPORT (Minimum 5 detailed structured sections).
-You must output a highly professional, structured ISRO/SAC executive bi-temporal change intelligence report with exact bullet points:
+            mode_instruction = """FORMAT REQUIREMENT: DEEP THINKING MODE — BI-TEMPORAL CHANGE REPORT (Detailed Multi-Point Breakdown).
+You must output a highly detailed, comprehensive intelligence report with clear structured sections:
 
-- **Baseline Observation (Time 1)**: Describe the specific land-cover, infrastructure, or natural features present in the first satellite observation.
-- **Visual Change Detection (Time 2)**: Detail the precise structural modifications, ground activity, or surface shifts observed in the second satellite scene over time.
-- **Land-Cover & Environmental Impact**: Analyze land conversion, vegetation loss/gain, or built-up structural density shifts based directly on visual evidence.
-- **Spatial Localization & Pattern Analysis**: State the exact spatial placement (e.g. central corridor, lower quadrant, riverbank border) of detected features.
-- **Executive Summary & Confidence**: Conclude with an executive-level operational takeaway and verification status."""
+- **Baseline Observation (Time 1)**: Detailed breakdown of original land cover, vegetation, and natural baseline features in the historical satellite scene.
+- **Visual Change Detection (Time 2)**: Comprehensive analysis of all structural modifications, new construction, road corridors, or land clearing observed in the recent satellite scene over time.
+- **Land-Cover & Environmental Impact**: Precise metrics on land transformation, vegetation loss/gain, and surface density shifts based on visual evidence.
+- **Spatial Localization & Pattern Analysis**: Exact spatial orientation, quadrant placement, and geometric layout of detected features.
+- **Executive Summary & Confidence**: Complete operational conclusions and confidence verification."""
         else:
-            mode_instruction = """FORMAT REQUIREMENT: DEEP MODE SINGLE-IMAGE GEOSPATIAL REPORT (Minimum 4 detailed structured sections).
-You must output a highly professional, structured ISRO/SAC executive single-scene intelligence report with exact bullet points:
+            mode_instruction = """FORMAT REQUIREMENT: DEEP THINKING MODE — SINGLE-IMAGE GEOSPATIAL REPORT (Detailed Multi-Point Breakdown).
+You must output a highly detailed, comprehensive single-scene intelligence report with clear structured sections:
 
-- **Satellite Optical Scene Overview**: Describe the primary land cover, infrastructure, topography, and surface features observed in this satellite image.
-- **Land-Cover & Feature Composition**: Detail key visible elements such as vegetation density, built-up structures, road networks, or water bodies.
-- **Spatial Feature Distribution**: Detail the spatial orientation and placement of key elements across the image frame.
-- **Executive Summary & Confidence**: Conclude with a clear operational summary of the observed geographic scene.
-
-Do NOT mention bi-temporal comparison, Time 1 vs Time 2, or past years change, as this is a single satellite image query."""
+- **Satellite Optical Scene Overview**: Comprehensive description of the primary land cover, infrastructure, topography, and surface features.
+- **Land-Cover & Feature Composition**: Exact breakdown of visible elements including water body percentages, vegetation coverage, built-up structures, and transport networks.
+- **Spatial Feature Distribution**: Detailed spatial orientation, central corridor features, and quadrant distribution of key elements across the image frame.
+- **Executive Summary & Operational Insights**: Complete summary of observed geographic features and domain insights."""
     else:
         if is_bitemporal:
-            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE BI-TEMPORAL CHANGE (1 to 2 complete informative sentences).
-Provide a clear 1 to 2 line executive summary sentence explaining the key land-use and structural changes between Time 1 and Time 2."""
+            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE — BI-TEMPORAL CHANGE SUMMARY (Straightforward, structured, clear sentence readable by anyone).
+Output a clear, direct, structured 1 to 2 sentence summary in plain, natural language easily understood by non-experts. State clearly what changed between the older baseline image (Time 1) and the latest image (Time 2)."""
         else:
-            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE SINGLE-IMAGE SUMMARY (1 to 2 complete informative sentences).
-Provide a clear 1 to 2 line executive summary sentence describing the exact land cover, water channels, topography, and key features visible in this single satellite image. Do NOT mention bi-temporal comparisons, Time 1/Time 2, or past changes."""
+            mode_instruction = """FORMAT REQUIREMENT: QUICK MODE — SINGLE-IMAGE SUMMARY (Straightforward, structured, clear sentence readable by anyone).
+Output a clear, direct, structured 1 to 2 sentence summary in plain, natural language easily understood by non-experts. State directly what features or land cover exist (e.g. water percentage, buildings, vegetation, roads) without complex jargon."""
 
     system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing (SIH 2026, PS 26167).
 Your task is to take raw computer vision model predictions and refine them into authoritative, professional, ISRO/SAC judge-winning intelligence reports.
