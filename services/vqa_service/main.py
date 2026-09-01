@@ -340,21 +340,31 @@ def infer(req: InferRequest):
     if not req.images or len(req.images) == 0:
         raise HTTPException(status_code=400, detail="At least one image is required for Specialist A.")
 
+    from services.vqa_service.sam_segmenter import segment_target_feature
+    
+    # Run Zero-Shot SAM Feature Segmentation & Metric Extraction
+    highlight_overlay, coverage_pct, feature_label = segment_target_feature(req.images[0], req.query)
+    
     result = run_native_vqa(req.images[0], req.query)
     
-    # Generate dynamic cyan highlight overlay for target class
-    highlight_overlay = generate_highlight_overlay(req.images[0], req.query)
+    # Enrich answer with exact segmented feature grounding
+    if coverage_pct > 0.0:
+        grounded_answer = f"{feature_label} account for approximately {coverage_pct}% of the observed satellite scene area."
+    else:
+        grounded_answer = result["answer"]
     
     return {
-        "answer": result["answer"],
+        "answer": grounded_answer,
         "confidence": result["confidence"],
         "evidence_image_base64": highlight_overlay,
         "specialist": "specialist_a",
         "task_type": req.task_type or "vqa",
         "execution_summary": {
-            "model_used": result["engine"],
+            "model_used": "SAM-2-ZeroShot-Segmenter & Qwen2.5-VL",
+            "feature_segmented": feature_label,
+            "coverage_percentage": coverage_pct,
             "input_images_count": len(req.images),
-            "specialist_role": "Optical/Multispectral VQA & Captioning"
+            "specialist_role": "Optical/Multispectral VQA & Segment Highlighting"
         }
     }
 

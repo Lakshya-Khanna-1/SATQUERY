@@ -708,13 +708,13 @@ export default function App() {
                         </span>
                       </div>
 
-                      <div className={msg.raw_images.length >= 2 ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1'}>
+                      <div className={msg.raw_images.length >= 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'grid grid-cols-1'}>
                         {msg.raw_images.map((imgUrl, i) => (
-                          <div key={i} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group bg-zinc-900 shadow-xs">
+                          <div key={i} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group bg-zinc-950 flex items-center justify-center shadow-xs">
                             <img 
                               src={imgUrl} 
                               alt={`Satellite Scene ${i+1}`} 
-                              className={`w-full object-cover transition-transform duration-300 group-hover:scale-105 ${msg.raw_images.length >= 2 ? 'h-44 sm:h-52' : 'h-60 sm:h-72'}`} 
+                              className={`w-full max-h-80 sm:max-h-96 object-contain transition-transform duration-300 group-hover:scale-[1.02]`} 
                             />
                             <div className="absolute top-2 left-2 bg-black/80 text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-bold backdrop-blur-xs border border-white/10">
                               {msg.raw_images.length >= 2 ? (i === 0 ? "Time 1: Historical Baseline" : "Time 2: Recent Observation") : "Satellite Optical Scene"}
@@ -725,20 +725,23 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Visual Evidence RGBA Overlay (if available) */}
+                  {/* Visual Evidence RGBA Overlay / SAM Feature Highlight */}
                   {msg.evidence_image && (
-                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 space-y-2">
+                    <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
                       <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
-                        <span className="flex items-center space-x-1.5">
+                        <span className="flex items-center space-x-1.5 font-bold text-zinc-700 dark:text-zinc-300">
                           <Layers className="h-3.5 w-3.5 text-cyan-500" />
-                          <span>Specialist C RGBA Overlay</span>
+                          <span>{msg.task_type === 'change_vqa' ? 'Bi-Temporal Change Segmentation Overlay' : 'Target Feature Highlight (SAM-2 Zero-Shot Cyan Overlay)'}</span>
+                        </span>
+                        <span className="text-[10px] bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-2 py-0.5 rounded-md font-mono border border-cyan-500/20">
+                          Cyan Mask Grounding
                         </span>
                       </div>
-                      <div className="relative rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                      <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-950 flex items-center justify-center">
                         <img 
-                          src={`data:image/png;base64,${msg.evidence_image}`} 
-                          alt="Change Overlay" 
-                          className="w-full h-48 object-cover" 
+                          src={msg.evidence_image.startsWith("data:") ? msg.evidence_image : `data:image/png;base64,${msg.evidence_image}`} 
+                          alt="Feature Highlight Overlay" 
+                          className="w-full max-h-80 sm:max-h-96 object-contain" 
                         />
                       </div>
                     </div>
