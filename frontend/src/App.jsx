@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import CoordsModal from './components/CoordsModal';
 import Sidebar from './components/Sidebar';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -748,8 +750,38 @@ export default function App() {
                   )}
 
                   {/* Synthesized Intelligence Text Output */}
-                  <div className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap font-sans">
-                    {msg.content}
+                  <div className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans prose dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        strong: ({node, ...props}) => (
+                          <span className="font-semibold text-zinc-950 dark:text-white" {...props} />
+                        ),
+                        p: ({node, ...props}) => (
+                          <p className="mb-2 last:mb-0 leading-relaxed text-zinc-800 dark:text-zinc-200" {...props} />
+                        ),
+                        ul: ({node, ...props}) => (
+                          <ul className="space-y-2.5 my-2 list-none pl-0" {...props} />
+                        ),
+                        li: ({node, ...props}) => (
+                          <li className="flex items-start space-x-2 text-zinc-800 dark:text-zinc-200" {...props}>
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-500 mt-2 shrink-0" />
+                            <div className="flex-1">{props.children}</div>
+                          </li>
+                        ),
+                        h1: ({node, ...props}) => (
+                          <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-3 mb-1.5" {...props} />
+                        ),
+                        h2: ({node, ...props}) => (
+                          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-2.5 mb-1" {...props} />
+                        ),
+                        h3: ({node, ...props}) => (
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 mt-2 mb-1" {...props} />
+                        )
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   </div>
 
                   {/* Collapsible Auditable Trace Accordion */}

@@ -66,12 +66,15 @@ def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], f
         q_lower = query.lower()
         
         # 1. Classify target feature intent
-        if any(w_word in q_lower for w_word in ["water", "river", "lake", "ocean", "sea", "pond", "canal", "waterbody", "harbor", "basin", "bay"]):
+        if any(v_word in q_lower for v_word in ["plane", "aircraft", "airplane", "jet", "vehicle", "bus", "car", "truck", "shuttle", "transport", "aviation", "flight"]):
+            feature_label = "Aircraft & Airport Ground Vehicles"
+            # High-contrast white/metallic fuselages and ground vehicles against dark apron/tarmac
+            raw_mask = (luminance > 145) & (np.abs(r - g) < 28) & (np.abs(g - b) < 28)
+            
+        elif any(w_word in q_lower for w_word in ["water", "river", "lake", "ocean", "sea", "pond", "canal", "waterbody", "harbor", "basin", "bay"]):
             feature_label = "Water Bodies & Hydrological Channels"
-            # Water: calm low gradient + low/medium luminance + blue/green bias
-            raw_mask = (grad_mag < 25) & ((b > r - 5) | (g > r - 5)) & (luminance < 145)
-            # Remove high-reflectance container rooftops
-            raw_mask = raw_mask & ~(luminance > 160)
+            # Real water: low gradient + distinct blue/cyan absorption (b > r + 15 and g > r + 8)
+            raw_mask = (grad_mag < 25) & (b > r + 15) & (g > r + 8) & (luminance < 140)
             
         elif any(s_word in q_lower for s_word in ["ship", "boat", "vessel", "cargo", "tanker", "docked", "pier"]):
             feature_label = "Maritime Cargo Vessels & Harbor Berths"
@@ -86,27 +89,24 @@ def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], f
         elif any(v_word in q_lower for v_word in ["vegetation", "forest", "tree", "green", "crop", "agriculture", "plant"]):
             feature_label = "Vegetation Canopy & Agricultural Cover"
             # Vegetation: high green excess (g > r and g > b)
-            raw_mask = (g > r + 6) & (g > b + 6)
+            raw_mask = (g > r + 10) & (g > b + 10)
             
         elif any(b_word in q_lower for b_word in ["building", "structure", "urban", "house", "roof", "built"]):
             feature_label = "Built-Up Structures & Urban Infrastructure"
             # Built-up: medium-high luminance neutral/gray/red tiles
             raw_mask = (np.abs(r - g) < 28) & (np.abs(g - b) < 28) & (luminance > 85)
             
-        elif any(r_word in q_lower for r_word in ["road", "highway", "pavement", "path", "corridor", "transport", "street"]):
-            feature_label = "Transport Road Networks & Paved Corridors"
-            # Linear transport corridors
-            raw_mask = (np.abs(r - g) < 18) & (np.abs(g - b) < 18) & (luminance > 90) & (luminance < 180) & (grad_mag < 35)
+        elif any(r_word in q_lower for r_word in ["road", "highway", "pavement", "path", "corridor", "tarmac", "runway", "apron", "street"]):
+            feature_label = "Paved Tarmac & Transit Corridors"
+            # Linear transport corridors / dark asphalt tarmac
+            raw_mask = (np.abs(r - g) < 18) & (np.abs(g - b) < 18) & (luminance > 35) & (luminance < 115)
             
         else:
-            feature_label = "Key Geographic Feature Segmentation"
-            raw_mask = (grad_mag > 15) | (luminance < 110)
+            feature_label = "Key Geographic Feature Grounding"
+            raw_mask = (grad_mag > 25) & (luminance > 120)
 
         # 2. Morphological Cleanup & Contiguous Shape Formation
-        # Structural structuring element (disk/ellipse)
         struct = ndi.generate_binary_structure(2, 2)
-        
-        # Binary Closing (bridges small gaps) and Filling Holes
         clean_mask = ndi.binary_closing(raw_mask, structure=struct, iterations=2)
         clean_mask = ndi.binary_fill_holes(clean_mask)
         
@@ -114,15 +114,16 @@ def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], f
         labeled, num_features = ndi.label(clean_mask, structure=struct)
         if num_features > 0:
             sizes = ndi.sum(clean_mask, labeled, range(1, num_features + 1))
-            # Keep components larger than 0.15% of image area
-            min_size = max(15, total_px * 0.0015)
+            # Keep meaningful components (>= 25 px)
+            min_size = max(25, int(total_px * 0.0005))
             mask_sizes = sizes >= min_size
             clean_mask = mask_sizes[labeled - 1]
             clean_mask[labeled == 0] = False
 
-        # Fallback if empty
-        if np.sum(clean_mask) < (total_px * 0.01):
-            clean_mask = raw_mask
+        # If queried feature is not present at all, return None without drawing false overlay
+        if np.sum(clean_mask) < (total_px * 0.003):
+            logger.info(f"Target feature '{feature_label}' not present in image scene (coverage < 0.3%).")
+            return None, 0.0, f"No {feature_label} Detected"
 
         # Calculate exact coverage percentage
         coverage_pct = round(float(np.sum(clean_mask) / total_px) * 100.0, 1)
