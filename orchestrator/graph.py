@@ -362,6 +362,7 @@ def run_orchestrator(
         "confidence": final_state["final_confidence"],
         "task_type": final_state["task_type"],
         "analysis_mode": final_state.get("analysis_mode", "quick"),
+        "images": final_state.get("images", []),
         "evidence_image_base64": final_state["evidence_image_base64"],
         "execution_trace": final_state["execution_trace"]
     }

@@ -65,6 +65,31 @@ def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], f
         
         q_lower = query.lower()
         
+        # 0. Intelligent Highlighting Intent Check:
+        # Determine if the user's question actually warrants spatial feature highlighting/grounding
+        explicit_highlight_intent = any(k in q_lower for k in [
+            "highlight", "segment", "mask", "locate", "where", "find", "detect", "ground", 
+            "bounding", "show", "point out", "what vehicle", "what aircraft", "what ship", 
+            "which vehicle", "how many", "count", "water coverage", "extent", "spatial layout"
+        ])
+        
+        target_object_query = any(k in q_lower for k in [
+            "plane", "aircraft", "airplane", "jet", "vehicle", "bus", "car", "truck", "shuttle",
+            "ship", "boat", "vessel", "cargo", "tanker", "container", "gantry", "crane",
+            "water body", "river", "lake", "ocean", "canal"
+        ])
+
+        # If it's purely a high-level general description without object/feature grounding intent, do NOT generate false overlays
+        is_general_query = any(k in q_lower for k in ["describe the scene", "give an overview", "caption this", "summary of the area", "general description"])
+        
+        if is_general_query and not explicit_highlight_intent:
+            logger.info("General overview query: Skipping feature segmentation overlay.")
+            return None, 0.0, "General Scene Overview"
+            
+        if not (explicit_highlight_intent or target_object_query):
+            logger.info("Query does not request feature grounding or spatial localization. Skipping overlay.")
+            return None, 0.0, "Scene Overview"
+
         # 1. Classify target feature intent
         if any(v_word in q_lower for v_word in ["plane", "aircraft", "airplane", "jet", "vehicle", "bus", "car", "truck", "shuttle", "transport", "aviation", "flight"]):
             feature_label = "Aircraft & Airport Ground Vehicles"

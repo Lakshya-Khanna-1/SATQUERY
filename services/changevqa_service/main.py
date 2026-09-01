@@ -106,13 +106,20 @@ def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
     if model is not None and processor is not None:
         try:
             from qwen_vl_utils import process_vision_info
-            formatted_prompt = f"Analyze the bi-temporal satellite pair. Image 1 is Time 1 (Before) and Image 2 is Time 2 (After). Describe in detail what changed from Time 1 to Time 2 over time: {prompt}"
+            
+            # Efficient scaling for high-speed multi-image vision processing
+            t1_proc = img_t1.copy()
+            t2_proc = img_t2.copy()
+            t1_proc.thumbnail((384, 384))
+            t2_proc.thumbnail((384, 384))
+
+            formatted_prompt = f"Analyze the bi-temporal satellite pair. Image 1 is Time 1 (Before) and Image 2 is Time 2 (After). Describe concisely what changed from Time 1 to Time 2: {prompt}"
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {"type": "image", "image": img_t1},
-                        {"type": "image", "image": img_t2},
+                        {"type": "image", "image": t1_proc},
+                        {"type": "image", "image": t2_proc},
                         {"type": "text", "text": formatted_prompt}
                     ]
                 }
@@ -123,7 +130,7 @@ def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
             inputs = processor(text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt").to(device)
             
             with torch.no_grad():
-                generated_ids = model.generate(**inputs, max_new_tokens=256)
+                generated_ids = model.generate(**inputs, max_new_tokens=64)
                 generated_ids_trimmed = [
                     out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
                 ]

@@ -49,7 +49,7 @@ async def webhook_satquery(request: Request):
     max_retries = 2
     for attempt in range(max_retries):
         try:
-            resp = requests.post(ORCHESTRATOR_URL, json=payload, timeout=35)
+            resp = requests.post(ORCHESTRATOR_URL, json=payload, timeout=60)
             if resp.status_code >= 500:
                 logger.warning(f"Orchestrator returned {resp.status_code} (attempt {attempt+1}/{max_retries}). Retrying...")
                 if attempt == max_retries - 1:

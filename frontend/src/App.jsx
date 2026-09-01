@@ -299,19 +299,29 @@ export default function App() {
   };
 
   const handleApplyCoords = ({ image_url, time1_url, lat, lon, radius_km, years_ago }) => {
-    const mainImg = image_url || time1_url;
+    const t1 = time1_url || image_url;
+    const t2 = image_url || time1_url;
     setAttachedImages([
       { 
+        id: Date.now() - 1, 
+        url: t1, 
+        role: 'time1',
+        lat,
+        lon,
+        radius_km,
+        years_ago
+      },
+      { 
         id: Date.now(), 
-        url: mainImg, 
-        role: 'optical',
+        url: t2, 
+        role: 'time2',
         lat,
         lon,
         radius_km,
         years_ago
       }
     ]);
-    setQuery("");
+    setQuery(`Analyze the bi-temporal structural and land-cover changes at coordinates (${lat}, ${lon}) comparing historical baseline with recent satellite observation.`);
   };
 
   const handleSend = async (overrideQuery = null) => {
@@ -369,15 +379,19 @@ export default function App() {
         throw new Error(`Server returned ${response.status}`);
       }
 
+      const finalImages = (responseData.images && responseData.images.length >= 2)
+        ? responseData.images
+        : (orderedUrls.length > 0 ? orderedUrls : (responseData.images || []));
+
       const assistantMessage = {
         id: Date.now() + 1,
         role: 'assistant',
         content: responseData.answer || "Observation analysis complete.",
         confidence: responseData.confidence || 0.95,
-        task_type: responseData.task_type || (orderedUrls.length >= 2 ? "change_vqa" : "vqa"),
+        task_type: responseData.task_type || (finalImages.length >= 2 ? "change_vqa" : "vqa"),
         analysis_mode: analysisMode,
         evidence_image: responseData.evidence_image_base64,
-        raw_images: orderedUrls,
+        raw_images: finalImages,
         trace: responseData.execution_trace || {
           task_type: responseData.task_type || "vqa",
           analysis_mode: analysisMode,
