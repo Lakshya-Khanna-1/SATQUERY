@@ -67,49 +67,46 @@ export default function Sidebar({
         <button
           onClick={onNewChat}
           title="Start New Analysis Chat Session"
-          className={`impeccable-btn w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs flex items-center justify-center space-x-2 shadow-md transition-all cursor-pointer ${
+          className={`impeccable-btn w-full py-2.5 rounded-xl border border-cyan-500/70 dark:border-cyan-400/70 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 dark:hover:bg-cyan-400/10 font-bold text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             isOpen ? 'px-3' : 'px-0'
           }`}
         >
-          <Plus className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0 text-cyan-500 dark:text-cyan-400" />
           {isOpen && <span className="truncate">New Chat</span>}
         </button>
       </div>
 
-      {/* Sidebar Navigation Items List */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
-        
-        {/* Pinned Chats Section */}
-        {pinnedSessions.length > 0 && (
-          <div className="space-y-1">
-            {isOpen && (
+      {/* Sidebar Navigation Items List — Only rendered when sidebar is open */}
+      {isOpen ? (
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+          
+          {/* Pinned Chats Section */}
+          {pinnedSessions.length > 0 && (
+            <div className="space-y-1">
               <div className="px-2 pb-1 text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider flex items-center space-x-1.5">
                 <Pin className="h-3 w-3 fill-amber-500 text-amber-500" />
                 <span>Pinned Chats</span>
               </div>
-            )}
-            {pinnedSessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onSelectSession(session.id)}
-                className={`group relative flex items-center p-2 rounded-xl text-xs transition-all cursor-pointer ${
-                  activeSessionId === session.id
-                    ? 'bg-cyan-500/10 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 font-semibold border border-cyan-500/30'
-                    : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
-                }`}
-                title={session.title}
-              >
-                <Pin className="h-4 w-4 shrink-0 text-amber-500 fill-amber-500" />
 
-                {isOpen && (
+              {pinnedSessions.map((session) => (
+                <div
+                  key={session.id}
+                  onClick={() => onSelectSession(session.id)}
+                  className={`group relative flex items-center p-2 rounded-xl text-xs transition-all cursor-pointer ${
+                    activeSessionId === session.id
+                      ? 'bg-cyan-500/10 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 font-semibold border border-cyan-500/30'
+                      : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                  }`}
+                  title={session.title}
+                >
+                  <Pin className="h-4 w-4 shrink-0 text-amber-500 fill-amber-500" />
+
                   <div className="ml-2.5 flex-1 overflow-hidden pr-6">
                     <div className="truncate font-medium text-xs text-zinc-900 dark:text-white">{session.title}</div>
                     <div className="truncate text-[10px] text-zinc-400 font-normal">{session.subtitle}</div>
                   </div>
-                )}
 
-                {/* Quick Action Icons on Hover */}
-                {isOpen && (
+                  {/* Quick Action Icons on Hover */}
                   <div className="absolute right-1.5 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => onTogglePin(session.id, e)}
@@ -126,50 +123,42 @@ export default function Sidebar({
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Recent History Section */}
-        <div className="space-y-1">
-          {isOpen && (
+          {/* Recent History Section */}
+          <div className="space-y-1">
             <div className="px-2 pb-1 text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center space-x-1.5">
               <History className="h-3 w-3 text-zinc-400" />
               <span>History</span>
             </div>
-          )}
 
-          {unpinnedSessions.length === 0 && pinnedSessions.length === 0 ? (
-            isOpen ? (
+            {unpinnedSessions.length === 0 && pinnedSessions.length === 0 ? (
               <div className="px-2 py-4 text-center text-xs text-zinc-500 font-mono">
                 No past sessions saved.
               </div>
-            ) : null
-          ) : (
-            unpinnedSessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onSelectSession(session.id)}
-                className={`group relative flex items-center p-2 rounded-xl text-xs transition-all cursor-pointer ${
-                  activeSessionId === session.id
-                    ? 'bg-cyan-500/10 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 font-semibold border border-cyan-500/30'
-                    : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
-                }`}
-                title={session.title}
-              >
-                <MessageSquare className="h-4 w-4 shrink-0 text-zinc-400 group-hover:text-cyan-500 transition-colors" />
+            ) : (
+              unpinnedSessions.map((session) => (
+                <div
+                  key={session.id}
+                  onClick={() => onSelectSession(session.id)}
+                  className={`group relative flex items-center p-2 rounded-xl text-xs transition-all cursor-pointer ${
+                    activeSessionId === session.id
+                      ? 'bg-cyan-500/10 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 font-semibold border border-cyan-500/30'
+                      : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                  }`}
+                  title={session.title}
+                >
+                  <MessageSquare className="h-4 w-4 shrink-0 text-zinc-400 group-hover:text-cyan-500 transition-colors" />
 
-                {isOpen && (
                   <div className="ml-2.5 flex-1 overflow-hidden pr-12">
                     <div className="truncate font-medium text-xs text-zinc-900 dark:text-white">{session.title}</div>
                     <div className="truncate text-[10px] text-zinc-400 font-normal">{session.subtitle}</div>
                   </div>
-                )}
 
-                {/* Quick Action Icons on Hover */}
-                {isOpen && (
+                  {/* Quick Action Icons on Hover */}
                   <div className="absolute right-1.5 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => onTogglePin(session.id, e)}
@@ -186,12 +175,14 @@ export default function Sidebar({
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
-                )}
-              </div>
-            ))
-          )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       {/* Bottom Footer Actions */}
       <div className="p-2 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-1 shrink-0">
