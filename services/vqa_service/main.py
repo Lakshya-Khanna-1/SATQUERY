@@ -187,55 +187,13 @@ def safe_b64_decode(image_b64: str) -> bytes:
 
 def generate_highlight_overlay(image_b64: str, query: str) -> Optional[str]:
     """
-    Generates a light cyan/blue (#06b6d4) highlight overlay mask over the exact input image
-    for the target land cover feature requested in the query (water bodies, vegetation, buildings, roads, etc.).
+    Generates a publication-grade light cyan (#06b6d4) highlight overlay mask over the exact input image
+    for the target feature requested in the query using the Remote-Sensing SAM Segmenter.
     """
     try:
-        import numpy as np
-        img_bytes = safe_b64_decode(image_b64)
-        pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        
-        arr = np.array(pil_img, dtype=np.float32)
-        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-        h, w, _ = arr.shape
-        total_px = h * w
-        
-        q_lower = query.lower()
-        
-        # Segment target feature pixels based on query intent
-        if any(w_word in q_lower for w_word in ["water", "river", "lake", "ocean", "sea", "pond", "canal", "waterbody"]):
-            mask = (b > r + 5) & (g > r + 5) & (r < 120)
-        elif any(v_word in q_lower for v_word in ["vegetation", "forest", "tree", "green", "crop", "agriculture", "plant"]):
-            mask = (g > r + 8) & (g > b + 8)
-        elif any(b_word in q_lower for b_word in ["building", "structure", "urban", "house", "roof", "built"]):
-            mask = (np.abs(r - g) < 25) & (np.abs(g - b) < 25) & (r > 70)
-        elif any(r_word in q_lower for r_word in ["road", "highway", "pavement", "path", "corridor", "transport"]):
-            mask = (np.abs(r - g) < 15) & (np.abs(g - b) < 15) & (r > 90) & (r < 180)
-        else:
-            # Smart default feature mask (coastal/land boundary or built-up contrast)
-            mask = (g > r + 5) | (b > r + 5)
-
-        # Fallback mask if empty
-        if np.sum(mask) < (total_px * 0.01):
-            mask = (b > r) & (g > r)
-
-        # Blend light cyan (#06b6d4 -> RGB: 6, 182, 212) overlay over target feature pixels
-        overlay_arr = arr.copy()
-        cyan_rgb = [6.0, 182.0, 212.0]
-        alpha = 0.45 # 45% opacity
-        
-        for c in range(3):
-            overlay_arr[:, :, c] = np.where(
-                mask,
-                (1.0 - alpha) * overlay_arr[:, :, c] + alpha * cyan_rgb[c],
-                overlay_arr[:, :, c]
-            )
-        
-        highlight_img = Image.fromarray(np.clip(overlay_arr, 0, 255).astype(np.uint8))
-        
-        buf = io.BytesIO()
-        highlight_img.save(buf, format="PNG")
-        return base64.b64encode(buf.getvalue()).decode("utf-8")
+        from services.vqa_service.sam_segmenter import segment_target_feature
+        highlight_b64, cov_pct, label = segment_target_feature(image_b64, query)
+        return highlight_b64
     except Exception as e:
         logger.warning(f"Could not generate feature highlight overlay: {e}")
         return None

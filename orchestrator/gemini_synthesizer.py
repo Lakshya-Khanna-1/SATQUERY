@@ -26,8 +26,8 @@ logger = logging.getLogger("GeminiSynthesizer")
 def get_gemini_key_pool() -> List[str]:
     """Dynamically fetch Gemini API key pool from environment variables without hardcoded defaults."""
     keys = [
-        os.environ.get("GEMINI_API_KEY_1", "").strip(),
         os.environ.get("GEMINI_API_KEY_2", "").strip(),
+        os.environ.get("GEMINI_API_KEY_1", "").strip(),
         os.environ.get("GEMINI_API_KEY", "").strip()
     ]
     return [k for k in keys if k]
