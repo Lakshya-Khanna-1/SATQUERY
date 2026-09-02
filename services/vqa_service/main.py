@@ -136,7 +136,7 @@ def run_native_vqa(image_b64: str, prompt: str) -> Dict[str, Any]:
 
     # Calculate pixel class distribution
     green_ratio = np.sum((g > r + 8) & (g > b + 8)) / total_px
-    water_ratio = np.sum((b > r + 5) & (g > r + 5) & (r < 110)) / total_px
+    water_ratio = np.sum((b > r + 16) & (b >= g - 2) & (r < 110)) / total_px
     grey_ratio = np.sum((np.abs(r - g) < 22) & (np.abs(g - b) < 22) & (r > 65)) / total_px
     brown_ratio = np.sum((r > g + 10) & (g > b) & (r > 80)) / total_px
 

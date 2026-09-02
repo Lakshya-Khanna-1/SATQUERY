@@ -86,11 +86,11 @@ def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], f
         # 1. Classify & Segment Specific Target Feature
         if any(w_word in q_lower for w_word in ["water", "river", "lake", "ocean", "sea", "pond", "canal", "waterbody", "harbor", "basin", "bay"]):
             feature_label = "Water Bodies & Hydrological Channels"
-            # Precision Water NDWI & Absorption (excludes dry soil, craters, and vegetation)
+            # Precision Water vs Vegetation & Shadow Separation:
+            # Real water: Blue channel dominant over Red (b > r + 15) AND Blue not overshadowed by Green (b >= g - 2) AND low-to-medium luminance (luminance < 110)
             water_cond = (
-                ((blue_dominance > 0.08) & (b > r + 12) & (luminance < 135)) |
-                ((ndwi > 0.06) & (g > r + 6) & (luminance < 120) & (b > r)) |
-                ((hsv[:, :, 0] >= 90) & (hsv[:, :, 0] <= 135) & (sat > 35) & (val < 160))
+                ((b > r + 16) & (b >= g - 2) & (sat > 30) & (luminance < 110)) |
+                ((hsv[:, :, 0] >= 90) & (hsv[:, :, 0] <= 130) & (sat > 40) & (val < 140))
             )
             mask[water_cond] = 255
 
