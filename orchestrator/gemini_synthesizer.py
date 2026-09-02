@@ -16,13 +16,23 @@ import logging
 import urllib.request
 from typing import Optional, List, Dict, Any
 from PIL import Image as PILImage
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger("GeminiSynthesizer")
 
-GEMINI_KEY_POOL = [
-    os.environ.get("GEMINI_API_KEY_1", "REDACTED_API_KEY"),
-    os.environ.get("GEMINI_API_KEY_2", "REDACTED_API_KEY")
-]
+def get_gemini_key_pool() -> List[str]:
+    """Dynamically fetch Gemini API key pool from environment variables without hardcoded defaults."""
+    keys = [
+        os.environ.get("GEMINI_API_KEY_1", "").strip(),
+        os.environ.get("GEMINI_API_KEY_2", "").strip(),
+        os.environ.get("GEMINI_API_KEY", "").strip()
+    ]
+    return [k for k in keys if k]
+
+GEMINI_KEY_POOL = get_gemini_key_pool()
 
 def optimize_b64_image(b64_str: str, max_size: int = 384) -> str:
     """Resize base64 image payload to reduce bandwidth and avoid Gemini API 429 rate limits."""
@@ -188,8 +198,8 @@ General System Rules:
         }
     }
 
-    # Rotate through Dual API Keys (Key 1 -> Key 2) for maximum throughput
-    keys_to_try = [api_key] if api_key else GEMINI_KEY_POOL
+    # Rotate through Dual API Keys (Key 1 -> Key 2) loaded from environment
+    keys_to_try = [api_key] if api_key else get_gemini_key_pool()
 
     for key_idx, current_key in enumerate(keys_to_try):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={current_key}"
