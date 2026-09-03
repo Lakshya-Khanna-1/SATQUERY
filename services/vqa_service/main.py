@@ -167,22 +167,24 @@ def run_native_vqa(image_b64: str, prompt: str) -> Dict[str, Any]:
 
 
 def safe_b64_decode(image_b64: str) -> bytes:
-    """Helper to safely decode base64 strings, handling truncation or missing padding gracefully."""
+    """Helper to safely decode base64 strings. Raises HTTPException 400 if invalid."""
+    if not image_b64 or not isinstance(image_b64, str):
+        raise HTTPException(status_code=400, detail="Invalid satellite image: Image payload is empty or not a string.")
+    clean_b64 = image_b64.split(",")[1] if "," in image_b64 else image_b64
+    clean_b64 = "".join(clean_b64.split())
+    rem = len(clean_b64) % 4
+    if rem == 1:
+        clean_b64 = clean_b64[:-1]
+    elif rem > 1:
+        clean_b64 += '=' * (4 - rem)
     try:
-        clean_b64 = image_b64.split(",")[1] if "," in image_b64 else image_b64
-        clean_b64 = "".join(clean_b64.split())
-        rem = len(clean_b64) % 4
-        if rem == 1:
-            clean_b64 = clean_b64[:-1]
-        elif rem > 1:
-            clean_b64 += '=' * (4 - rem)
-        return base64.b64decode(clean_b64)
+        raw_bytes = base64.b64decode(clean_b64)
+        with Image.open(io.BytesIO(raw_bytes)) as test_img:
+            test_img.verify()
+        return raw_bytes
     except Exception as e:
-        logger.warning(f"Fallback image bytes used for base64 decode: {e}")
-        img = Image.new("RGB", (64, 64), (16, 185, 129))
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        return buf.getvalue()
+        logger.error(f"Failed to decode base64 image: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid satellite image payload: Unable to decode base64 image ({e})")
 
 
 def generate_highlight_overlay(image_b64: str, query: str) -> Optional[str]:
@@ -318,11 +320,11 @@ def infer(req: InferRequest):
         "specialist": "specialist_a",
         "task_type": req.task_type or "vqa",
         "execution_summary": {
-            "model_used": "SAM-2-ZeroShot-Segmenter & Qwen2.5-VL",
+            "model_used": "OpenCV-Spectral-Segmenter (NDWI/NDVI) & Qwen2.5-VL",
             "feature_segmented": feature_label,
             "coverage_percentage": coverage_pct,
             "input_images_count": len(req.images),
-            "specialist_role": "Optical/Multispectral VQA & Segment Highlighting"
+            "specialist_role": "Optical/Multispectral VQA & Spectral Feature Highlighting"
         }
     }
 

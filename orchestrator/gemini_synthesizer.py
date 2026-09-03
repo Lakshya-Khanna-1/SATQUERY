@@ -226,11 +226,14 @@ General System Rules:
                     break
                 logger.warning(f"Gemini API Key #{key_idx+1} Error {http_err.code}: {http_err.reason}")
                 break
-            except Exception as e:
-                logger.warning(f"Gemini API Key #{key_idx+1} exception: {e}")
-                break
+    if raw_answer.startswith("Error:") or raw_answer.startswith("Service Unreachable:") or raw_answer.startswith("Validation Error:"):
+        return raw_answer
 
-    return fallback_format(query, raw_answer, analysis_mode, task_type, images_b64)
+    # Transparent fallback: When Gemini API is unreachable, directly deliver the authentic specialist model output
+    logger.info("Gemini synthesis offline. Delivering raw specialist model observation directly without hallucination.")
+    if raw_answer and raw_answer.strip():
+        return f"[Gemini Synthesis Offline — Raw Specialist Model Output]:\n{raw_answer}"
+    return "Error: Unable to synthesize response. Specialist model produced no output and Gemini API is offline."
 
 
 def analyze_scene_visual_properties(images_b64: Optional[List[str]], query: str) -> Dict[str, Any]:

@@ -314,27 +314,34 @@ export default function App() {
     setQuery("");
   };
 
-  const handleSend = async (overrideQuery = null) => {
-    const promptToSend = overrideQuery || query;
-    if (!promptToSend.trim() && attachedImages.length === 0) return;
+  // Calculate dynamic WGS 84 / UTM Coordinate Reference System (CRS)
+  const calculateCRS = (lat, lon) => {
+    if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+      return "EPSG:4326 (WGS 84 Geographic)";
+    }
+    const zone = Math.floor((lon + 180) / 6) + 1;
+    const epsg = lat >= 0 ? 32600 + zone : 32700 + zone;
+    return `EPSG:${epsg} (WGS 84 / UTM Zone ${zone}${lat >= 0 ? 'N' : 'S'})`;
+  };
+
+  // Dispatch Multi-Agent Pipeline Request
+  const handleSend = async () => {
+    if (!query.trim() && attachedImages.length === 0) return;
 
     const orderedUrls = getOrderedImages();
-    const queryText = promptToSend.trim() || (orderedUrls.length >= 2 ? "Analyze the bi-temporal changes between these satellite observations." : "Describe the land cover and key features in this satellite image.");
-
+    const queryText = query.trim() || (orderedUrls.length >= 2 ? "Analyze the satellite imagery pair." : "Analyze the satellite imagery.");
+    const imgMeta = attachedImages[0] || {};
+    
     const userMessage = {
       id: Date.now(),
       role: 'user',
       content: queryText,
       images: orderedUrls,
-      analysis_mode: analysisMode,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMessage]);
     saveMessageToDB(userMessage);
-    
-    // Extract metadata before clearing attached images
-    const imgMeta = attachedImages[0] || {};
     setQuery("");
     setAttachedImages([]);
     setLoading(true);
@@ -348,6 +355,8 @@ export default function App() {
       setTimeout(() => setStepStatus("Verifying spatial co-registration & CRS alignment..."), 300);
       setTimeout(() => setStepStatus(`Executing QLoRA Specialist (${analysisMode.toUpperCase()} Mode)...`), 800);
 
+      const dynamicCRS = calculateCRS(imgMeta.lat, imgMeta.lon);
+
       const payload = {
         query: queryText,
         images: orderedUrls,
@@ -359,7 +368,7 @@ export default function App() {
           years_ago: imgMeta.years_ago,
           timestamp: new Date().toISOString(),
           source: "satquery_chat_ui",
-          crs: "EPSG:32632"
+          crs: dynamicCRS
         }
       };
 
@@ -373,18 +382,22 @@ export default function App() {
       if (response.ok) {
         responseData = await response.json();
       } else {
-        throw new Error(`Server returned ${response.status}`);
+        const errText = await response.text();
+        throw new Error(`Server returned status ${response.status}: ${errText.slice(0, 150)}`);
       }
 
       const finalImages = (responseData.images && responseData.images.length >= 2)
         ? responseData.images
         : (orderedUrls.length > 0 ? orderedUrls : (responseData.images || []));
 
+      const isResponseError = (responseData.answer && responseData.answer.startsWith("Error:"));
+
       const assistantMessage = {
         id: Date.now() + 1,
         role: 'assistant',
+        isError: isResponseError,
         content: responseData.answer || "Observation analysis complete.",
-        confidence: responseData.confidence || 0.95,
+        confidence: isResponseError ? 0.0 : (responseData.confidence || 0.95),
         task_type: responseData.task_type || (finalImages.length >= 2 ? "change_vqa" : "vqa"),
         analysis_mode: analysisMode,
         evidence_image: responseData.evidence_image_base64,
@@ -398,6 +411,7 @@ export default function App() {
           models_used: ["Qwen2.5-VL-3B-Instruct (LoRA)", "Gemini 2.5 Flash"],
           latency_ms: 184.2,
           confidence_score: responseData.confidence || 0.95,
+          crs: dynamicCRS,
           timestamp: new Date().toISOString()
         },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -407,38 +421,18 @@ export default function App() {
       saveMessageToDB(assistantMessage);
 
     } catch (err) {
-      console.warn("Direct service unreachable, generating specialized inference response:", err);
+      console.error("Backend request failed:", err);
       
       const isPair = orderedUrls.length >= 2;
-      let naturalAnswer = "";
+      const dynamicCRS = calculateCRS(imgMeta.lat, imgMeta.lon);
 
-      if (analysisMode === "deep") {
-        if (isPair) {
-          naturalAnswer = `- **Baseline Observation (Time 1)**: Initial satellite observation capturing baseline geographic land cover, agricultural fields, and natural forest canopy.
-- **Visual Change Detection (Time 2)**: Significant civil construction and ground clearing identified. A new paved transportation road corridor has been built along with multiple residential structures.
-- **Land-Cover & Environmental Impact**: Surface feature dynamics indicate localized land transformation corresponding to observed model predictions.
-- **Spatial Localization & Pattern Analysis**: Detected spatial features are aligned within the primary central and lower-right observation frame.
-- **Executive Summary & Confidence**: High-confidence specialist vision model detection (94.8%) confirming observed scene dynamics.`;
-        } else {
-          naturalAnswer = `- **Baseline Observation (Time 1)**: High-resolution single optical satellite scene capturing an urban industrial and transportation sector.
-- **Visual Change Detection**: Built-up commercial structures, paved access roads, and distinct white circular storage tanks identified in the lower right quadrant.
-- **Land-Cover & Environmental Impact**: Impervious paved surfaces comprise 62% of the scene footprint with surrounding vegetation occupying 38%.
-- **Spatial Localization & Pattern Analysis**: Primary industrial infrastructure features are localized in the central corridor.
-- **Executive Summary & Confidence**: High-confidence optical VQA vision model detection (96.5%) confirming observed scene dynamics.`;
-        }
-      } else {
-        if (isPair) {
-          naturalAnswer = "Bi-temporal analysis confirms that forest vegetation present at Time 1 was cleared by Time 2 to construct a curved residential road accompanied by multiple new housing structures across the central corridor.";
-        } else {
-          naturalAnswer = "High-resolution satellite observation displays an urban transport corridor bordered by commercial facilities, paved parking areas, and a distinct white circular storage tank located in the lower right quadrant.";
-        }
-      }
-
-      const fallbackAssistantMessage = {
+      // Honest error reporting: No fabricated responses, no fake confidence, no fake models
+      const errorAssistantMessage = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: naturalAnswer,
-        confidence: isPair ? 0.948 : 0.965,
+        isError: true,
+        content: `**Execution Failure**: Unable to complete satellite intelligence analysis.\n\nBackend endpoint at \`${targetUrl}\` failed:\n> *${err.message}*\n\nPlease verify that the SatQuery backend and specialist services are running.`,
+        confidence: 0.0,
         task_type: isPair ? "change_vqa" : "vqa",
         analysis_mode: analysisMode,
         evidence_image: null,
@@ -448,17 +442,20 @@ export default function App() {
           analysis_mode: analysisMode,
           input_modality: isPair ? "bitemporal_pair" : "single_optical",
           images_received: orderedUrls.length,
-          specialists_invoked: isPair ? ["specialist_b", "specialist_c"] : ["specialist_a"],
-          models_used: isPair ? ["satquery-changevqa (Qwen2.5-VL)", "Specialist-C (U-Net)"] : ["satquery-vqa (Qwen2.5-VL)"],
-          latency_ms: 162.4,
-          confidence_score: isPair ? 0.948 : 0.965,
+          specialists_invoked: [],
+          models_used: [],
+          latency_ms: 0.0,
+          confidence_score: 0.0,
+          status: "FAILED",
+          crs: dynamicCRS,
+          error: err.message,
           timestamp: new Date().toISOString()
         },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
-      setMessages(prev => [...prev, fallbackAssistantMessage]);
-      saveMessageToDB(fallbackAssistantMessage);
+      setMessages(prev => [...prev, errorAssistantMessage]);
+      saveMessageToDB(errorAssistantMessage);
     } finally {
       setLoading(false);
       setStepStatus("");
@@ -680,14 +677,25 @@ export default function App() {
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                 </div>
               ) : (
-                <div className="w-full bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
+                <div className={`w-full bg-white dark:bg-zinc-900/60 border rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs ${
+                  msg.isError 
+                    ? 'border-rose-500/40 bg-rose-50/20 dark:bg-rose-950/10' 
+                    : 'border-zinc-200 dark:border-zinc-800'
+                }`}>
                   
                   {/* Header Row: Confidence & PDF Download Icon Button */}
                   <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-mono font-semibold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        {Math.round(msg.confidence * 100)}% Confidence
-                      </span>
+                      {msg.isError ? (
+                        <span className="text-[11px] font-mono font-semibold uppercase px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center space-x-1">
+                          <span>●</span>
+                          <span>Execution Failed</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-mono font-semibold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {Math.round(msg.confidence * 100)}% Confidence
+                        </span>
+                      )}
                       <span className="text-[11px] font-mono uppercase text-zinc-400">
                         {msg.task_type}
                       </span>
@@ -815,12 +823,30 @@ export default function App() {
                             <div><span className="text-zinc-400">Modality:</span> {msg.trace.input_modality}</div>
                             <div><span className="text-zinc-400">Latency:</span> {msg.trace.latency_ms} ms</div>
                           </div>
-                          <div>
-                            <span className="text-zinc-400">Specialists:</span> {msg.trace.specialists_invoked?.join(", ")}
-                          </div>
-                          <div>
-                            <span className="text-zinc-400">Models:</span> {msg.trace.models_used?.join(", ")}
-                          </div>
+                          {msg.trace.crs && (
+                            <div>
+                              <span className="text-zinc-400">CRS / Spatial:</span> <span className="text-cyan-600 dark:text-cyan-400">{msg.trace.crs}</span>
+                            </div>
+                          )}
+                          {msg.trace.geotiff_metadata && (
+                            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                              <span className="font-bold text-zinc-700 dark:text-zinc-300">GeoTIFF Header:</span> {msg.trace.geotiff_metadata.bands} bands ({msg.trace.geotiff_metadata.driver}), GSD: {msg.trace.geotiff_metadata.resolution_gsd_m?.[0] || 'N/A'}m
+                            </div>
+                          )}
+                          {msg.trace.status === 'FAILED' ? (
+                            <div className="text-rose-600 dark:text-rose-400 font-semibold">
+                              <span>Status: FAILED ({msg.trace.error})</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <span className="text-zinc-400">Specialists:</span> {msg.trace.specialists_invoked?.join(", ") || "None"}
+                              </div>
+                              <div>
+                                <span className="text-zinc-400">Models:</span> {msg.trace.models_used?.join(", ") || "None"}
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

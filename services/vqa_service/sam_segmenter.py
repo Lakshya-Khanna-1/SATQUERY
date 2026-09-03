@@ -20,22 +20,25 @@ logger = logging.getLogger("SAMSegmenter")
 
 
 def safe_b64_decode(image_b64: str) -> bytes:
-    """Safely decodes base64 string handling missing padding or header tags."""
+    """Safely decodes base64 string handling padding or header tags. Raises ValueError if invalid."""
+    if not image_b64 or not isinstance(image_b64, str):
+        raise ValueError("Image payload is empty or not a string.")
+    clean_b64 = image_b64.split(",")[1] if "," in image_b64 else image_b64
+    clean_b64 = "".join(clean_b64.split())
+    rem = len(clean_b64) % 4
+    if rem == 1:
+        clean_b64 = clean_b64[:-1]
+    elif rem > 1:
+        clean_b64 += '=' * (4 - rem)
     try:
-        clean_b64 = image_b64.split(",")[1] if "," in image_b64 else image_b64
-        clean_b64 = "".join(clean_b64.split())
-        rem = len(clean_b64) % 4
-        if rem == 1:
-            clean_b64 = clean_b64[:-1]
-        elif rem > 1:
-            clean_b64 += '=' * (4 - rem)
-        return base64.b64decode(clean_b64)
+        raw_bytes = base64.b64decode(clean_b64)
+        # Verify valid image bytes
+        with Image.open(io.BytesIO(raw_bytes)) as test_img:
+            test_img.verify()
+        return raw_bytes
     except Exception as e:
-        logger.warning(f"Fallback image bytes used for base64 decode: {e}")
-        img = Image.new("RGB", (64, 64), (16, 185, 129))
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        return buf.getvalue()
+        logger.error(f"Invalid base64 satellite image payload: {e}")
+        raise ValueError(f"Invalid base64 satellite image data: {e}")
 
 
 def segment_target_feature(image_b64: str, query: str) -> Tuple[Optional[str], float, str]:

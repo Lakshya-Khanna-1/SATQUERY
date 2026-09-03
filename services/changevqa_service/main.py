@@ -97,11 +97,15 @@ class InferRequest(BaseModel):
 def run_bitemporal_vqa(images_b64: List[str], prompt: str) -> Dict[str, Any]:
     model, processor = get_specialist_b()
     
-    clean_b64_t1 = images_b64[0].split(",")[1] if "," in images_b64[0] else images_b64[0]
-    clean_b64_t2 = images_b64[1].split(",")[1] if "," in images_b64[1] else images_b64[1]
-    
-    img_t1 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t1))).convert("RGB")
-    img_t2 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t2))).convert("RGB")
+    try:
+        clean_b64_t1 = images_b64[0].split(",")[1] if "," in images_b64[0] else images_b64[0]
+        clean_b64_t2 = images_b64[1].split(",")[1] if "," in images_b64[1] else images_b64[1]
+        
+        img_t1 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t1))).convert("RGB")
+        img_t2 = Image.open(io.BytesIO(base64.b64decode(clean_b64_t2))).convert("RGB")
+    except Exception as e:
+        logger.error(f"Invalid base64 bi-temporal satellite image: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid bi-temporal image data: Unable to decode base64 image ({e})")
     
     if model is not None and processor is not None:
         try:

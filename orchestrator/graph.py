@@ -68,13 +68,12 @@ def classify_task(state: AgentState) -> AgentState:
     intent = classify_intent_with_gemini(query)
     logger.info(f"Gemini intent classification result: '{intent}'")
 
-    if img_count >= 2:
-        task_type = "change_vqa"
-        input_modality = "bitemporal_pair"
-    elif intent == "SAR_FUSION":
+    # 1. Prioritize Optical-SAR Fusion if intent or keywords indicate fusion
+    if intent == "SAR_FUSION" or any(k in q_lower for k in ["fusion", "sar", "radar", "cross-modal", "microwave"]):
         task_type = "fusion"
         input_modality = "cross_modal_pair"
-    elif intent == "BITEMPORAL_CHANGE":
+    # 2. Check for Bi-Temporal Change Detection
+    elif intent == "BITEMPORAL_CHANGE" or any(k in q_lower for k in ["what has changed", "changed", "change", "past", "history", "historical", "years ago", "before and after", "temporal", "evolution", "expansion"]):
         task_type = "change_vqa"
         input_modality = "bitemporal_pair"
         
@@ -110,6 +109,10 @@ def classify_task(state: AgentState) -> AgentState:
         present_img = images[0] if img_count > 0 else satellite_data["time2_base64"]
         images = [satellite_data["time1_base64"], present_img]
         state["images"] = images
+    elif img_count >= 2:
+        # Default for 2 images without specific fusion keywords
+        task_type = "change_vqa"
+        input_modality = "bitemporal_pair"
     else:
         # Single Image VQA / Caption / Grounding
         if any(k in q_lower for k in ["caption", "describe", "overview", "summary"]):
@@ -143,8 +146,43 @@ def validate_input(state: AgentState) -> AgentState:
         validation_passed = False
         details["error"] = "No image data provided in query request."
     else:
-        details["image_count"] = len(images)
-        details["status"] = "Valid image schema and dimensions"
+        # Strictly validate that each provided base64 string decodes into a valid image
+        import io, base64
+        from PIL import Image as PILImage
+        from data.geotiff_parser import extract_geotiff_metadata
+        geotiff_info = None
+
+        for idx, img_b64 in enumerate(images):
+            try:
+                if not isinstance(img_b64, str) or not img_b64.strip():
+                    raise ValueError(f"Image #{idx+1} payload is empty or not a string.")
+                clean_b64 = img_b64.split(",")[1] if "," in img_b64 else img_b64
+                clean_b64 = "".join(clean_b64.split())
+                rem = len(clean_b64) % 4
+                if rem == 1:
+                    clean_b64 = clean_b64[:-1]
+                elif rem > 1:
+                    clean_b64 += '=' * (4 - rem)
+                raw_bytes = base64.b64decode(clean_b64)
+                with PILImage.open(io.BytesIO(raw_bytes)) as pil_img:
+                    pil_img.verify()
+
+                # Check if it contains genuine GeoTIFF metadata
+                gt_meta = extract_geotiff_metadata(raw_bytes)
+                if gt_meta:
+                    geotiff_info = gt_meta
+            except Exception as e:
+                logger.error(f"Image validation failed for image #{idx+1}: {e}")
+                validation_passed = False
+                details["error"] = f"Corrupted or unreadable base64 satellite image data (Image #{idx+1}: {str(e)})."
+                break
+        
+        if validation_passed:
+            details["image_count"] = len(images)
+            details["status"] = "Valid image schema and verified decodable satellite pixels"
+            if geotiff_info:
+                state["geotiff_metadata"] = geotiff_info
+                details["geotiff"] = geotiff_info
         
     state["validation_passed"] = validation_passed
     state["was_resampled"] = was_resampled
@@ -154,12 +192,13 @@ def validate_input(state: AgentState) -> AgentState:
 
 # Node 3: Specialist Routing & Invocation
 def select_and_call_specialist(state: AgentState) -> AgentState:
-    if not state["validation_passed"]:
+    if not state.get("validation_passed", True):
         state["specialist_responses"] = [{
             "specialist": "system_guard",
             "answer": f"Validation Error: {state['validation_details'].get('error', 'Invalid input payload')}",
             "confidence": 0.0,
-            "evidence_image_base64": None
+            "evidence_image_base64": None,
+            "error": True
         }]
         return state
 
@@ -201,37 +240,19 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
                 logger.warning(f"{spec} returned status {res.status_code}: {res.text}")
                 responses.append({
                     "specialist": spec,
-                    "answer": f"Specialist {spec} executed with fallback processing.",
-                    "confidence": 0.85,
-                    "evidence_image_base64": None
+                    "answer": f"Specialist service error: {spec} returned HTTP {res.status_code} ({res.text[:120]}).",
+                    "confidence": 0.0,
+                    "evidence_image_base64": None,
+                    "error": True
                 })
         except Exception as e:
-            logger.warning(f"Failed to connect to {spec} ({service_url}): {e}. Using native specialist fallback.")
-            evidence_overlay = None
-            if spec == "specialist_a":
-                ans = f"Single-Image Optical VQA: High-resolution satellite observation analyzing target geographic area. Primary infrastructure corridors and land-cover features mapped. [Query: {query}]"
-            elif spec == "specialist_b":
-                ans = f"Bi-Temporal Change Analysis: Comparative analysis between Time 1 (Baseline) and Time 2 (Present) reveals significant urban development, land clearing, and newly constructed road infrastructure across the target sector."
-            else:
-                ans = "Multimodal Optical-SAR Fusion: Integrated Sentinel-2 optical spectrum and Sentinel-1 SAR microwave radar backscatter. High-confidence structural surface change detected across primary development corridor."
-                try:
-                    import io, base64
-                    from PIL import Image, ImageDraw
-                    overlay = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
-                    draw = ImageDraw.Draw(overlay)
-                    draw.ellipse([140, 160, 360, 380], fill=(239, 68, 68, 130), outline=(220, 38, 38, 255), width=2)
-                    draw.polygon([(210, 90), (330, 90), (360, 320), (180, 320)], fill=(6, 182, 212, 110), outline=(8, 145, 178, 255), width=2)
-                    buf = io.BytesIO()
-                    overlay.save(buf, format="PNG")
-                    evidence_overlay = base64.b64encode(buf.getvalue()).decode("utf-8")
-                except Exception:
-                    evidence_overlay = None
-
+            logger.error(f"Failed to connect to {spec} ({service_url}): {e}")
             responses.append({
                 "specialist": spec,
-                "answer": ans,
-                "confidence": 0.94,
-                "evidence_image_base64": evidence_overlay
+                "answer": f"Service Unreachable: Unable to connect to {spec} at {service_url}. The service may be offline or initializing ({e}).",
+                "confidence": 0.0,
+                "evidence_image_base64": None,
+                "error": True
             })
 
     state["specialist_responses"] = responses
@@ -240,12 +261,28 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
 
 # Node 4: Combine Outputs & Evidence via Gemini Synthesis Layer
 def combine_outputs(state: AgentState) -> AgentState:
+    # If input validation failed, short-circuit directly with error
+    if not state.get("validation_passed", True):
+        err_msg = state.get("validation_details", {}).get("error", "Invalid input payload")
+        state["final_answer"] = f"Error: Input validation failed. {err_msg}"
+        state["final_confidence"] = 0.0
+        state["evidence_image_base64"] = None
+        return state
+
     responses = state.get("specialist_responses", [])
     query = state.get("query", "")
     task_type = state.get("task_type", "vqa")
     
     if not responses:
-        state["final_answer"] = "No response generated by specialists."
+        state["final_answer"] = "Error: No response generated by specialist models."
+        state["final_confidence"] = 0.0
+        state["evidence_image_base64"] = None
+        return state
+
+    # If all specialists returned errors, do not call Gemini synthesis
+    if all(resp.get("error") for resp in responses):
+        err_details = responses[0].get("answer", "Backend specialist service unreachable.")
+        state["final_answer"] = f"Error: {err_details}"
         state["final_confidence"] = 0.0
         state["evidence_image_base64"] = None
         return state
@@ -255,21 +292,22 @@ def combine_outputs(state: AgentState) -> AgentState:
     evidence_img = None
 
     for resp in responses:
-        ans = resp.get("answer", "").strip()
-        if ans:
-            answers.append(ans)
-        confs.append(resp.get("confidence", 0.9))
-        if resp.get("evidence_image_base64"):
-            evidence_img = resp.get("evidence_image_base64")
+        if not resp.get("error"):
+            ans = resp.get("answer", "").strip()
+            if ans:
+                answers.append(ans)
+            confs.append(resp.get("confidence", 0.9))
+            if resp.get("evidence_image_base64"):
+                evidence_img = resp.get("evidence_image_base64")
 
     # Combine text answers
     if len(answers) == 1:
         raw_combined = answers[0]
     else:
-        # Merged bi-temporal response
-        raw_combined = f"{answers[0]}\n\n[Visual Change Segmentation]: {answers[1]}"
+        # Merged bi-temporal / fusion response
+        raw_combined = "\n\n".join(answers)
 
-    avg_conf = sum(confs) / max(1, len(confs))
+    avg_conf = sum(confs) / max(1, len(confs)) if confs else 0.0
 
     # Pass raw output through Gemini Natural Language Synthesis Layer
     logger.info(f"Synthesizing raw specialist output into natural language via Gemini API (Mode: {state.get('analysis_mode', 'quick')})...")
@@ -291,6 +329,12 @@ def combine_outputs(state: AgentState) -> AgentState:
 def log_execution(state: AgentState) -> AgentState:
     elapsed_ms = round((time.time() - state.get("start_time", time.time())) * 1000, 2)
     
+    from data.geotiff_parser import calculate_utm_crs
+    meta = state.get("metadata", {}) or {}
+    lat = meta.get("lat")
+    lon = meta.get("lon")
+    dynamic_crs = calculate_utm_crs(lat, lon)
+    
     trace = {
         "task_type": state["task_type"],
         "analysis_mode": state.get("analysis_mode", "quick"),
@@ -298,15 +342,21 @@ def log_execution(state: AgentState) -> AgentState:
         "images_received": len(state.get("images", [])),
         "validation_passed": state.get("validation_passed", True),
         "was_resampled": state.get("was_resampled", False),
+        "crs": dynamic_crs,
         "specialists_invoked": state.get("specialists_to_call", []),
         "latency_ms": elapsed_ms,
-        "confidence_score": state.get("final_confidence", 0.9),
+        "confidence_score": state.get("final_confidence", 0.0),
         "models_used": [
             resp.get("execution_summary", {}).get("model_used", resp.get("specialist", "specialist"))
             for resp in state.get("specialist_responses", [])
         ],
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
+    
+    if state.get("geotiff_metadata"):
+        trace["geotiff_metadata"] = state["geotiff_metadata"]
+        if state["geotiff_metadata"].get("crs"):
+            trace["crs"] = state["geotiff_metadata"]["crs"]
     
     state["execution_trace"] = trace
     logger.info(f"Execution complete in {elapsed_ms}ms with confidence {state['final_confidence']}")
