@@ -193,4 +193,4 @@ npm run dev
 - **Sensor Agnostic**: Validates input by resolution, band count, and EPSG coordinate reference systems rather than hardcoded sensor names.
 - **Auditable AI**: Every response produces an auditable execution trace with model names, timestamps, latency, and confidence scoring.
 - **Hardware Optimized**: Designed for single consumer/workstation GPUs (RTX A2000 12GB) utilizing 4-bit QLoRA and modular dual-branch architectures.
-  hi lol 
+  hi lol Meow :3
