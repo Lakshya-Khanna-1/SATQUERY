@@ -39,6 +39,7 @@ scratch/
 Thumbs.db
 
 # Excluded Documentation, Presentations, Reports & Metadata
+.agents/
 AGENTS.md
 DESIGN.md
 GUIDE.md
