@@ -37,3 +37,16 @@ scratch/
 *.log
 .DS_Store
 Thumbs.db
+
+# Excluded Documentation, Presentations, Reports & Metadata
+AGENTS.md
+DESIGN.md
+GUIDE.md
+JUDGES_README.md
+pyproject.toml
+README.md
+report.md
+TASKLIST.md
+ppt_screenshots/
+PRESENTATION/
+reports/
