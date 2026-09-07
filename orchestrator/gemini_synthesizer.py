@@ -226,6 +226,9 @@ General System Rules:
                     break
                 logger.warning(f"Gemini API Key #{key_idx+1} Error {http_err.code}: {http_err.reason}")
                 break
+            except Exception as conn_err:
+                logger.warning(f"Gemini API Key #{key_idx+1} connection notice: {conn_err}. Trying next key...")
+                break
     if raw_answer.startswith("Error:") or raw_answer.startswith("Service Unreachable:") or raw_answer.startswith("Validation Error:"):
         return raw_answer
 

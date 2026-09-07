@@ -46,17 +46,24 @@ export default function App() {
   // Dark/Light Theme State
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const themeParam = params.get('theme');
+      if (themeParam === 'light') return false;
+      if (themeParam === 'dark') return true;
       return localStorage.getItem('satquery_theme') !== 'light';
     }
     return true;
   });
 
   useEffect(() => {
+    const root = document.documentElement;
     if (darkMode) {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
+      root.classList.remove('light');
       localStorage.setItem('satquery_theme', 'dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
+      root.classList.add('light');
       localStorage.setItem('satquery_theme', 'light');
     }
   }, [darkMode]);
@@ -85,6 +92,23 @@ export default function App() {
 
   useEffect(() => {
     fetchSessions();
+    const params = new URLSearchParams(window.location.search);
+    const themeParam = params.get('theme');
+    if (themeParam === 'light') {
+      setDarkMode(false);
+    } else if (themeParam === 'dark') {
+      setDarkMode(true);
+    }
+    const sessionParam = params.get('session');
+    if (sessionParam) {
+      handleSelectSession(sessionParam);
+    }
+    if (params.get('coords') === 'true') {
+      setShowCoordsModal(true);
+    }
+    if (params.get('sidebar') === 'true') {
+      setIsSidebarOpen(true);
+    }
   }, [activeTab]);
 
   // Handle starting a fresh new chat session
@@ -108,7 +132,25 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         if (data.messages) {
-          setMessages(data.messages);
+          const mapped = data.messages.map((m, idx, arr) => {
+            let rawImgs = m.raw_images;
+            if (!rawImgs && m.images) {
+              try {
+                rawImgs = Array.isArray(m.images) ? m.images : JSON.parse(m.images);
+              } catch (e) {
+                rawImgs = [m.images];
+              }
+            }
+            if (!rawImgs && m.role === 'assistant' && idx > 0 && arr[idx - 1].images) {
+              try {
+                rawImgs = Array.isArray(arr[idx - 1].images) ? arr[idx - 1].images : JSON.parse(arr[idx - 1].images);
+              } catch (e) {
+                rawImgs = [arr[idx - 1].images];
+              }
+            }
+            return { ...m, raw_images: rawImgs };
+          });
+          setMessages(mapped);
         }
       }
     } catch (err) {
@@ -470,7 +512,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased selection:bg-cyan-500/20 transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-16'}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased selection:bg-cyan-500/20 transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-16'}`}>
       
       {/* Vertical Navigation Bar (Collapsed by default, Expandable on toggle/click) */}
       <Sidebar

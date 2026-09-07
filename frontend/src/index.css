@@ -1,41 +1,30 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  html {
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  html.dark, html.dark body {
+    color-scheme: dark;
+    background-color: #09090b !important;
+    color: #f4f4f5 !important;
+  }
+  html:not(.dark), html:not(.dark) body, html.light, html.light body {
+    color-scheme: light;
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+  }
   body {
     font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     letter-spacing: -0.011em;
+    min-height: 100vh;
   }
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
-}
-
-/* Impeccable Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(161, 161, 170, 0.25);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.5);
-}
-
-/* Impeccable Dark/Light Theme Tokens */
-html.dark {
-  color-scheme: dark;
-  background-color: #09090b;
-}
-
-html:not(.dark) {
-  color-scheme: light;
-  background-color: #fcfcfd;
 }
 
 /* Impeccable Micro-Interaction Utilities */

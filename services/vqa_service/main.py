@@ -302,16 +302,22 @@ def infer(req: InferRequest):
 
     from services.vqa_service.sam_segmenter import segment_target_feature
     
-    # Run Zero-Shot SAM Feature Segmentation & Metric Extraction
-    highlight_overlay, coverage_pct, feature_label = segment_target_feature(req.images[0], req.query)
+    # Run Grounded-SAM 2 Zero-Shot Feature Segmentation & Metric Extraction
+    highlight_overlay, coverage_pct, feature_label, detected_count = segment_target_feature(req.images[0], req.query)
     
     result = run_native_vqa(req.images[0], req.query)
     
-    # Enrich answer with exact segmented feature grounding
+    # Enrich answer with exact segmented feature grounding & instance count
     if coverage_pct > 0.0:
-        grounded_answer = f"{feature_label} account for approximately {coverage_pct}% of the observed satellite scene area."
+        if detected_count > 0:
+            grounded_answer = f"{detected_count} {feature_label.lower()} detected in the satellite scene, covering approximately {coverage_pct}% of the observed surface area."
+        else:
+            grounded_answer = f"{feature_label} account for approximately {coverage_pct}% of the observed satellite scene area."
+    elif "no " in feature_label.lower() or detected_count == 0:
+        clean_target = feature_label.replace("No ", "").replace("Detected", "").replace("detected", "").strip()
+        grounded_answer = f"No {clean_target.lower()} were detected within the observed satellite scene."
     else:
-        grounded_answer = result["answer"]
+        grounded_answer = result.get("answer") or "Observation completed. No target features matched."
     
     return {
         "answer": grounded_answer,
@@ -320,11 +326,12 @@ def infer(req: InferRequest):
         "specialist": "specialist_a",
         "task_type": req.task_type or "vqa",
         "execution_summary": {
-            "model_used": "OpenCV-Spectral-Segmenter (NDWI/NDVI) & Qwen2.5-VL",
+            "model_used": "Grounded-SAM-2 (Meta SAM 2.1 Hiera + VLM Grounding)",
             "feature_segmented": feature_label,
+            "detected_count": detected_count,
             "coverage_percentage": coverage_pct,
             "input_images_count": len(req.images),
-            "specialist_role": "Optical/Multispectral VQA & Spectral Feature Highlighting"
+            "specialist_role": "Optical/Multispectral VQA & Grounded-SAM 2 Feature Highlighting"
         }
     }
 
