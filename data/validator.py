@@ -1,6 +1,5 @@
 """
 SatQuery AI — Comprehensive Dataset & GeoTIFF Validator
-SIH 2026 (PS 26167)
 
 Validates every downloaded and streamed sample:
 1. Correct file format (PNG, JPEG, TIFF, GeoTIFF, JSON).

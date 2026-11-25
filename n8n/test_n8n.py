@@ -1,6 +1,5 @@
 """
 SatQuery AI — n8n Webhook Test Suite
-SIH 2026 (PS 26167)
 
 Tests:
 1. End-to-end roundtrip through n8n Webhook -> Orchestrator -> Response.

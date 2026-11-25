@@ -1,7 +1,6 @@
 """
 SatQuery AI — Specialist B Microservice (Bi-temporal Change-VQA)
 Port: 8002
-SIH 2026 (PS 26167)
 """
 
 import os

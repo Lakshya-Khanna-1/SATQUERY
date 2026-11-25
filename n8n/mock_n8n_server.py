@@ -1,7 +1,6 @@
 """
 SatQuery AI — n8n Webhook Proxy & Execution Simulator
 Port: 5678 (Default n8n Webhook Port)
-SIH 2026 (PS 26167)
 
 Simulates the exact runtime execution of the n8n workflow:
 1. Receives POST /satquery from frontend

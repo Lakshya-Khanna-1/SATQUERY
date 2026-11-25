@@ -1,7 +1,6 @@
 """
 SatQuery AI — Specialist C Microservice (Fusion & Change-Map Segmentation)
 Port: 8003
-SIH 2026 (PS 26167)
 """
 
 import os

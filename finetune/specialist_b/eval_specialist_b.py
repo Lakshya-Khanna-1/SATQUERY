@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist B Evaluation Script
-SIH 2026 (PS 26167)
 
 Evaluates Specialist B on CDVQA Test/Test2 splits, reporting:
 1. Overall Change-VQA Accuracy

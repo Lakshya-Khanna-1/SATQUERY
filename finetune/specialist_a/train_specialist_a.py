@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist A QLoRA Fine-Tuning Script
-SIH 2026 (PS 26167)
 
 Specialist A: Single-Image Optical & Multispectral VQA, Captioning, and Spatial Grounding.
 Base Model: Qwen/Qwen2.5-VL-3B-Instruct (4-bit NF4 Quantization)

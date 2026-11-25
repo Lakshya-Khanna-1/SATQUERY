@@ -1,6 +1,5 @@
 """
 SatQuery AI — Base Model Acquisition & Dual Staging Script
-SIH 2026 (PS 26167)
 
 Downloads Qwen/Qwen2.5-VL-3B-Instruct from Hugging Face into two separate local
 staging paths:

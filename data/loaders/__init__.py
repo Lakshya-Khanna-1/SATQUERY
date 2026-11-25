@@ -1,6 +1,5 @@
 """
 SatQuery AI — Unified Remote Sensing Dataset Loaders
-SIH 2026 (PS 26167)
 
 Exports standard PyTorch Dataset classes across all specialists:
 - VRSBenchDataset (Specialist A: VQA, Captioning, Grounding)

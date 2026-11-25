@@ -1,6 +1,5 @@
 """
 SatQuery AI — Geospatial Pairing & Co-Registration Module
-SIH 2026 (PS 26167)
 
 Checks whether an optical image and a SAR image (or two bi-temporal images)
 share the same CRS, bounding box (within a tolerance in meters), and resolution.

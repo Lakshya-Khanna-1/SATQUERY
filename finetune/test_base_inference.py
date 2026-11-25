@@ -1,6 +1,5 @@
 """
 SatQuery AI — Base Model Vision-Language Inference Verification
-SIH 2026 (PS 26167)
 
 Tests both local copies of Qwen/Qwen2.5-VL-3B-Instruct:
 1. Specialist A Base (models/base/specialist_a_base)

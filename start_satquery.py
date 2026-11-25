@@ -1,6 +1,5 @@
 """
 SatQuery AI — Unified Production System Launcher
-SIH 2026 (PS 26167)
 
 Launches all SatQuery multi-agent microservices in production mode:
 1. Specialist A Microservice (VQA / Captioning) on Port 8001
@@ -31,7 +30,7 @@ def main():
 
     print("=" * 65)
     print("      SATQUERY AI -- AGENTIC EARTH OBSERVATION SYSTEM")
-    print("              SIH 2026 -- Problem Statement ID 26167")
+    print("              Satellite imagery analysis")
     print("=" * 65)
 
     processes = []

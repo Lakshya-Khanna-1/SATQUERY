@@ -1,6 +1,5 @@
 """
 SatQuery AI — Unified Dataset Common Schema & Utilities
-SIH 2026 (PS 26167)
 
 Defines the common schema and collation functions for all remote sensing datasets:
 {

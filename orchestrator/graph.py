@@ -1,6 +1,5 @@
 """
 SatQuery AI — LangGraph Multi-Agent Orchestrator
-SIH 2026 (PS 26167)
 
 State Graph Workflow:
 1. classify_task (LLM Task Intent Classification)

@@ -629,8 +629,8 @@ export default function App() {
                   <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400">RTX A2000 12GB (CUDA)</span>
                 </div>
                 <div className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
-                  <span className="font-medium">Problem Statement:</span>
-                  <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400">SIH 2026 • PS 26167</span>
+                  <span className="font-medium">Analysis domain:</span>
+                  <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400">Satellite imagery</span>
                 </div>
                 <div className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
                   <span className="font-medium">Organization Target:</span>
