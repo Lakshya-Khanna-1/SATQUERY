@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist C Microservice (FastAPI)
-SIH 2026 (PS 26167)
 
 Exposes Specialist C (Dual-Branch Multimodal Fusion & Bi-Temporal Change Segmentation)
 via a high-performance REST API.

@@ -1,6 +1,5 @@
 """
 SatQuery AI — CDVQA + SECOND PyTorch Dataset Loader
-SIH 2026 (PS 26167)
 
 Specialist B dataset loader for Bi-Temporal Change-VQA.
 Joins CDVQA QA JSONs with SECOND pre-change (T1) and post-change (T2) images.

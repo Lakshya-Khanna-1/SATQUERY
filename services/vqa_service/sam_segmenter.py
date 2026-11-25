@@ -1,6 +1,5 @@
 """
 SatQuery AI — Grounded-SAM 2 Remote-Sensing Feature Segmenter
-SIH 2026 (PS 26167)
 
 High-precision remote sensing instance segmentation pipeline:
 1. Local Satellite Object Grounding (YOLOv8-OBB trained on DOTA aerial dataset):

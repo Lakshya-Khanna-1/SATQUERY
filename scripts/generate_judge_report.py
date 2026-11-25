@@ -1,6 +1,5 @@
 """
-SatQuery AI — Official SIH Judge Audit & Evaluation Generator
-SIH 2026 (PS 26167)
+SatQuery AI — Prototype Audit & Evaluation Generator
 """
 
 import os
@@ -9,7 +8,7 @@ import time
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORT_PATH = os.path.join(ROOT_DIR, "reports", "judge_report_v1.md")
 
-content = f"""# SIH Judge Report — SatQuery AI (v1.0 Production)
+content = f"""# Prototype Evaluation Report — SatQuery AI (v1.0 Production)
 
 **Date**: {time.strftime('%Y-%m-%d')}  
 **Reviewed Version**: Commit e2412a1 (Production Architecture)  

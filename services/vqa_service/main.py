@@ -1,7 +1,6 @@
 """
 SatQuery AI — Specialist A Microservice (VQA / Captioning / Grounding)
 Port: 8001
-SIH 2026 (PS 26167)
 """
 
 import os

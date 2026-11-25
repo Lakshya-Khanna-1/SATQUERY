@@ -1,6 +1,5 @@
 """
 SatQuery AI — RSVQA-LR PyTorch Dataset Loader
-SIH 2026 (PS 26167)
 
 Specialist A dataset loader for low-resolution satellite VQA using RSVQA-LR.
 """

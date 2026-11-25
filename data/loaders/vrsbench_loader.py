@@ -1,6 +1,5 @@
 """
 SatQuery AI — VRSBench PyTorch Dataset Loader
-SIH 2026 (PS 26167)
 
 Specialist A dataset loader for single-image VQA, Captioning, and
 Region Grounding using VRSBench.

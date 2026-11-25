@@ -1,6 +1,5 @@
 """
 SatQuery AI — Geospatial PDF Report Generator
-SIH 2026 (PS 26167)
 
 Generates official, downloadable PDF reports from satellite image observations,
 specialist model outputs, and Gemini synthesis analysis.
@@ -107,7 +106,7 @@ def generate_satquery_pdf(
     header_data = [
         [
             Paragraph("<b>SatQuery AI</b><br/><font size=8 color='#0891b2'>Geospatial Intelligence Report</font>", title_style),
-            Paragraph("<b>SIH 2026 • PS 26167</b><br/><font size=8>Autonomous Vision-Language Swarm</font>", subtitle_style)
+            Paragraph("<b>Satellite imagery analysis</b><br/><font size=8>Prototype report</font>", subtitle_style)
         ]
     ]
     header_table = Table(header_data, colWidths=[340, 200])
@@ -234,7 +233,7 @@ def generate_satquery_pdf(
 
     story.append(Spacer(1, 20))
     story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER_COLOR, spaceBefore=10, spaceAfter=6))
-    story.append(Paragraph("<para align=center><i>SatQuery AI • SIH 2026 Smart India Hackathon • Problem Statement 26167</i></para>", meta_style))
+    story.append(Paragraph("<para align=center><i>SatQuery AI • Satellite imagery analysis</i></para>", meta_style))
 
     doc.build(story)
     pdf_data = buffer.getvalue()

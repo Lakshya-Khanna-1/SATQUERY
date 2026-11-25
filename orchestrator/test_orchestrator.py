@@ -1,6 +1,5 @@
 """
 SatQuery AI — Orchestrator Verification Test
-SIH 2026 (PS 26167)
 
 Tests LangGraph state machine across:
 1. Single-Image Optical VQA (Specialist A)

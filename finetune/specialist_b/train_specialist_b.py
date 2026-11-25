@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist B QLoRA Fine-Tuning Script
-SIH 2026 (PS 26167)
 
 Specialist B: Bi-temporal Multi-Image Change Detection Visual Question Answering (Change-VQA).
 Base Model: Qwen/Qwen2.5-VL-3B-Instruct (4-bit NF4 Quantization)

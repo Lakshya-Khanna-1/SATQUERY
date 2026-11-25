@@ -1,6 +1,5 @@
 """
 SatQuery AI — GeoTIFF Metadata & Geospatial Coordinate Reference Parser
-SIH 2026 (PS 26167)
 
 Extracts true geospatial metadata (CRS, spatial bounds, ground sample distance resolution,
 transform matrix, band count) from GeoTIFF imagery using rasterio.

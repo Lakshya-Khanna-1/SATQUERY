@@ -1,7 +1,6 @@
 """
 SatQuery AI — Multi-Agent Orchestrator API (FastAPI)
 Port: 8000
-SIH 2026 (PS 26167)
 
 Exposes POST /query endpoint wrapping the LangGraph Multi-Agent State Machine
 and POST /generate-pdf for automatic report generation.

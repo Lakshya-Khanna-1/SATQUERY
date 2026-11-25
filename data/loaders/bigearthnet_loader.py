@@ -1,6 +1,5 @@
 """
 SatQuery AI — BigEarthNet-MM PyTorch Dataset Loader
-SIH 2026 (PS 26167)
 
 Specialist C dataset loader for Optical–SAR Multimodal Fusion & Change Mapping.
 Pairs Sentinel-2 (Multispectral/Optical) with Sentinel-1 (SAR) GeoTIFFs,

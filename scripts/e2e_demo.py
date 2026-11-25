@@ -1,6 +1,5 @@
 """
 SatQuery AI — End-to-End Pipeline Integration Test & Demo
-SIH 2026 (PS 26167)
 
 Executes complete end-to-end multi-agent evaluation:
 1. Geospatial Co-registration & Resampling Check (data/pairing.py)
@@ -44,7 +43,7 @@ def pil_to_base64(img: Image.Image) -> str:
 def run_e2e_demo():
     logger.info("=" * 80)
     logger.info("   SATQUERY AI — COMPLETE END-TO-END SYSTEM INTEGRATION DEMO   ")
-    logger.info("   Problem Statement 26167 • Smart India Hackathon (SIH 2026)  ")
+    logger.info("   Satellite imagery analysis demonstration  ")
     logger.info("=" * 80)
     
     t_start = time.time()

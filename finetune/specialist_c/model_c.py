@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist C Architecture
-SIH 2026 (PS 26167)
 
 Specialist C: Multimodal Optical-SAR Fusion & Pixel-Level Change Segmentation.
 Components:

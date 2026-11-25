@@ -1,8 +1,7 @@
 """
-SatQuery AI — Automated SIH Judge Evaluation & Adversarial Audit Suite
-SIH 2026 (PS 26167)
+SatQuery AI — Automated Prototype Evaluation & Adversarial Audit Suite
 
-Evaluates system against the 100-Point SIH Judge Rubric (JUDGE_AGENTS.md)
+Evaluates system against the 100-Point prototype evaluation rubric (JUDGE_AGENTS.md)
 and tests all 8 adversarial protocol checks.
 """
 
@@ -33,7 +32,7 @@ def create_synthetic_image(color=(100, 150, 200), label="Test"):
 
 def run_eval():
     print("=" * 70)
-    print("  SIH JUDGE EVALUATION & ADVERSARIAL AUDIT SUITE — SATQUERY AI")
+    print("  PROTOTYPE EVALUATION & ADVERSARIAL AUDIT SUITE — SATQUERY AI")
     print("                (Rubric: JUDGE_AGENTS.md)")
     print("=" * 70)
 
@@ -147,12 +146,12 @@ def run_eval():
     )
 
     print("\n" + "=" * 70)
-    print(f"  TOTAL SIH JUDGE RUBRIC SCORE: {total_score} / 100")
+    print(f"  TOTAL PROTOTYPE RUBRIC SCORE: {total_score} / 100")
     print("=" * 70)
 
     # Generate Official Judge Report
     report_path = os.path.join(ROOT_DIR, "reports", "judge_report_v1.md")
-    report_content = f"""# SIH Judge Report — SatQuery AI (v1.0 Production)
+    report_content = f"""# Prototype Evaluation Report — SatQuery AI (v1.0 Production)
 
 **Date**: {time.strftime('%Y-%m-%d')}  
 **Reviewed Version**: Commit e2412a1 (Production Architecture)  
@@ -238,7 +237,7 @@ def run_eval():
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_content)
 
-    print(f"\n✅ Official SIH Judge Evaluation Report saved to: {report_path}")
+    print(f"\n✅ Prototype Evaluation Report saved to: {report_path}")
 
 
 if __name__ == "__main__":

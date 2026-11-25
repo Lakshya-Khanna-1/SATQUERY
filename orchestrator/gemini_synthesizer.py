@@ -1,6 +1,5 @@
 """
 SatQuery AI — Gemini Natural Language & Geospatial Synthesis Layer
-SIH 2026 (PS 26167)
 
 Takes raw observation outputs from fine-tuned specialist computer vision models
 (Qwen2.5-VL QLoRA, U-Net Segmentation) + bi-temporal satellite images, and uses
@@ -159,7 +158,7 @@ Output a clear, direct, structured 1 to 2 sentence summary in plain, natural lan
             mode_instruction = """FORMAT REQUIREMENT: QUICK MODE — SINGLE-IMAGE SUMMARY (Straightforward, structured, clear sentence readable by anyone).
 Output a clear, direct, structured 1 to 2 sentence summary in plain, natural language easily understood by non-experts. State directly what features or land cover exist (e.g. water percentage, buildings, vegetation, roads) without complex jargon."""
 
-    system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing (SIH 2026, PS 26167).
+    system_prompt = f"""You are SatQuery AI's Senior Geospatial Intelligence Synthesizer for Earth Observation & Satellite Remote Sensing.
 Your task is to take raw computer vision model predictions and refine them into authoritative, professional, ISRO/SAC judge-winning intelligence reports.
 
 User Query: "{query}"

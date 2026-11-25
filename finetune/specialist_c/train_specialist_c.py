@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist C Training Script
-SIH 2026 (PS 26167)
 
 Trains:
 1. Contrastive InfoNCE Loss on Optical-SAR pairs from BigEarthNet.

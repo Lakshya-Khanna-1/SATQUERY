@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist C Evaluation & Verification Test
-SIH 2026 (PS 26167)
 
 Verifies:
 1. Optical-SAR Multimodal Fusion: Returns 256-d normalized joint embedding & cross-modal similarity.

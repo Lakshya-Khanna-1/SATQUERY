@@ -1,6 +1,5 @@
 """
 SatQuery AI — Specialist A Evaluation Script
-SIH 2026 (PS 26167)
 
 Evaluates Specialist A (Base + LoRA Adapter) on test splits of:
 1. RSVQA-LR (Accuracy on VQA classification)
