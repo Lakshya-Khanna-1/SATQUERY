@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: satquery-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r orchestrator/requirements.txt
+    startCommand: uvicorn orchestrator.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.13
+      - key: SATQUERY_VISITOR_DB_DIR
+        value: /tmp/satquery-history
+      - key: SATQUERY_WORKER_TOKEN
+        sync: false

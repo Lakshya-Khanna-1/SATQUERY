@@ -308,7 +308,9 @@ def infer(req: InferRequest):
     result = run_native_vqa(req.images[0], req.query)
     
     # Enrich answer with exact segmented feature grounding & instance count
-    if coverage_pct > 0.0:
+    if feature_label == "Scene Overview":
+        grounded_answer = result["answer"]
+    elif coverage_pct > 0.0:
         if detected_count > 0:
             grounded_answer = f"{detected_count} {feature_label.lower()} detected in the satellite scene, covering approximately {coverage_pct}% of the observed surface area."
         else:
@@ -326,7 +328,7 @@ def infer(req: InferRequest):
         "specialist": "specialist_a",
         "task_type": req.task_type or "vqa",
         "execution_summary": {
-            "model_used": "Grounded-SAM-2 (Meta SAM 2.1 Hiera + VLM Grounding)",
+            "model_used": result["engine"] if not highlight_overlay else result["engine"] + " with feature overlay",
             "feature_segmented": feature_label,
             "detected_count": detected_count,
             "coverage_percentage": coverage_pct,

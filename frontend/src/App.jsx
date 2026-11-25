@@ -1,3 +1,4 @@
+import { apiUrl, hasWebhook, fetchSession } from './api';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
@@ -32,7 +33,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [stepStatus, setStepStatus] = useState("");
-  const [activeTab, setActiveTab] = useState("n8n"); // 'n8n' or 'orchestrator'
+  const [activeTab, setActiveTab] = useState(hasWebhook ? "n8n" : "orchestrator"); // 'n8n' or 'orchestrator'
   const [expandedTraces, setExpandedTraces] = useState({});
   const [analysisMode, setAnalysisMode] = useState("quick"); // 'quick' (1-2 sentences) or 'deep' (5+ lines)
   const [showSettings, setShowSettings] = useState(false);
@@ -70,12 +71,10 @@ export default function App() {
 
   // Fetch all saved persistent sessions from SQLite database
   const fetchSessions = async () => {
-    const targetUrl = activeTab === "n8n" 
-      ? "http://127.0.0.1:5678/sessions" 
-      : "http://127.0.0.1:8000/sessions";
+    const targetUrl = apiUrl(activeTab, "/sessions");
 
     try {
-      const res = await fetch(targetUrl);
+      const res = await fetchSession(targetUrl);
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -123,12 +122,10 @@ export default function App() {
   // Load selected session from SQLite database
   const handleSelectSession = async (sessionId) => {
     setActiveSessionId(sessionId);
-    const targetUrl = activeTab === "n8n"
-      ? `http://127.0.0.1:5678/sessions/${sessionId}`
-      : `http://127.0.0.1:8000/sessions/${sessionId}`;
+    const targetUrl = apiUrl(activeTab, `/sessions/${sessionId}`);
 
     try {
-      const res = await fetch(targetUrl);
+      const res = await fetchSession(targetUrl);
       if (res.ok) {
         const data = await res.json();
         if (data.messages) {
@@ -161,9 +158,7 @@ export default function App() {
   // Toggle pinning mechanism for a session
   const handleTogglePin = async (sessionId, e) => {
     if (e) e.stopPropagation();
-    const targetUrl = activeTab === "n8n"
-      ? `http://127.0.0.1:5678/sessions/${sessionId}/pin`
-      : `http://127.0.0.1:8000/sessions/${sessionId}/pin`;
+    const targetUrl = apiUrl(activeTab, `/sessions/${sessionId}/pin`);
 
     // Optimistic UI update
     setSessions(prev => prev.map(s => {
@@ -174,7 +169,7 @@ export default function App() {
     }));
 
     try {
-      await fetch(targetUrl, { method: "PUT" });
+      await fetchSession(targetUrl, { method: "PUT" });
       fetchSessions();
     } catch (err) {
       console.warn("Pin toggle sync warning:", err);
@@ -184,9 +179,7 @@ export default function App() {
   // Delete a session permanently from local database
   const handleDeleteSession = async (sessionId, e) => {
     if (e) e.stopPropagation();
-    const targetUrl = activeTab === "n8n"
-      ? `http://127.0.0.1:5678/sessions/${sessionId}`
-      : `http://127.0.0.1:8000/sessions/${sessionId}`;
+    const targetUrl = apiUrl(activeTab, `/sessions/${sessionId}`);
 
     setSessions(prev => prev.filter(s => s.id !== sessionId));
     if (activeSessionId === sessionId) {
@@ -194,7 +187,7 @@ export default function App() {
     }
 
     try {
-      await fetch(targetUrl, { method: "DELETE" });
+      await fetchSession(targetUrl, { method: "DELETE" });
       fetchSessions();
     } catch (err) {
       console.warn("Delete session sync warning:", err);
@@ -203,12 +196,10 @@ export default function App() {
 
   // Save a message persistently to SQLite local database
   const saveMessageToDB = async (msg) => {
-    const targetUrl = activeTab === "n8n"
-      ? `http://127.0.0.1:5678/sessions/${activeSessionId}/messages`
-      : `http://127.0.0.1:8000/sessions/${activeSessionId}/messages`;
+    const targetUrl = apiUrl(activeTab, `/sessions/${activeSessionId}/messages`);
 
     try {
-      await fetch(targetUrl, {
+      await fetchSession(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(msg)
@@ -302,9 +293,7 @@ export default function App() {
     if (!imagesToUse || imagesToUse.length === 0) return;
 
     setGeneratingPdf(true);
-    const targetPdfUrl = activeTab === "n8n"
-      ? "http://127.0.0.1:5678/generate-pdf"
-      : "http://127.0.0.1:8000/generate-pdf";
+    const targetPdfUrl = apiUrl(activeTab, "/generate-pdf");
 
     try {
       const response = await fetch(targetPdfUrl, {
@@ -389,9 +378,7 @@ export default function App() {
     setLoading(true);
     setStepStatus("Classifying input modality and task intent...");
 
-    const targetUrl = activeTab === "n8n" 
-      ? "http://127.0.0.1:5678/satquery" 
-      : "http://127.0.0.1:8000/query";
+    const targetUrl = apiUrl(activeTab, "/query");
 
     try {
       setTimeout(() => setStepStatus("Verifying spatial co-registration & CRS alignment..."), 300);
@@ -600,6 +587,7 @@ export default function App() {
                 <label className="block text-zinc-500 dark:text-zinc-400 font-medium mb-1.5">Backend Pipeline Route</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
+                    disabled={!hasWebhook}
                     onClick={() => setActiveTab("n8n")}
                     className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
                       activeTab === 'n8n'
@@ -607,7 +595,7 @@ export default function App() {
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
-                    n8n Webhook (:5678)
+                    {hasWebhook ? 'n8n Webhook' : 'Webhook unavailable'}
                   </button>
                   <button
                     onClick={() => setActiveTab("orchestrator")}
@@ -617,7 +605,7 @@ export default function App() {
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
-                    Orchestrator (:8000)
+                    Orchestrator
                   </button>
                 </div>
               </div>

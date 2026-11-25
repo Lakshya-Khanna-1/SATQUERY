@@ -8,12 +8,16 @@ and POST /generate-pdf for automatic report generation.
 """
 
 import os
+import hashlib
+import tempfile
+from pathlib import Path
+from uuid import UUID
 import sys
 import logging
 from typing import List, Dict, Any, Optional
 
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -37,6 +41,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# On shared hosts, keep each browser's uploads and sessions in a separate database.
+visitor_dir = os.environ.get("SATQUERY_VISITOR_DB_DIR")
+if not visitor_dir and os.environ.get("SATQUERY_WORKER_TOKEN"):
+    visitor_dir = os.path.join(tempfile.gettempdir(), "satquery-history")
+if visitor_dir:
+    Path(visitor_dir).mkdir(parents=True, exist_ok=True)
+
+    @app.middleware("http")
+    async def isolate_history(request: Request, call_next):
+        if request.method == "OPTIONS" or request.url.path.split("/")[1:2] != ["sessions"]:
+            return await call_next(request)
+        try:
+            key = UUID(request.headers.get("X-Satquery-History", ""))
+            if key.version != 4:
+                raise ValueError
+        except ValueError:
+            return Response(status_code=401)
+        from data.database import init_db, session_db
+        filename = hashlib.sha256(key.bytes).hexdigest() + ".sqlite3"
+        path = Path(visitor_dir) / filename
+        scope = session_db.set(path)
+        try:
+            # Idempotent even when a browser opens two tabs simultaneously.
+            init_db()
+            response = await call_next(request)
+            response.headers["Cache-Control"] = "private, no-store"
+            return response
+        finally:
+            session_db.reset(scope)
+
+
+if os.environ.get("SATQUERY_WORKER_TOKEN"):
+    from orchestrator.gpu_relay import router
+    app.include_router(router)
 
 
 class QueryRequest(BaseModel):

@@ -8,6 +8,7 @@ Provides persistent local storage for:
 """
 
 import os
+from contextvars import ContextVar
 import sqlite3
 import json
 import time
@@ -21,8 +22,11 @@ DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DB_DIR, "satquery_memory.db")
 
 
+session_db = ContextVar("session_db", default=None)
+
+
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(session_db.get() or DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -62,11 +66,11 @@ def init_db():
 
     conn.commit()
     conn.close()
-    logger.info(f"SatQuery SQLite memory database initialized at: {DB_PATH}")
 
 
-# Automatically initialize on module load
-init_db()
+
+if not os.environ.get("SATQUERY_VISITOR_DB_DIR"):
+    init_db()
 
 
 def create_session(title: str = "New Analysis Session") -> Dict[str, Any]:

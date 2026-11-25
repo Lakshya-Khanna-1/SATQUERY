@@ -95,10 +95,10 @@ async def webhook_sessions_proxy(request: Request, path: str):
             method=method,
             url=target_url,
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "X-Satquery-History": request.headers.get("X-Satquery-History", "")},
             timeout=20
         )
-        return Response(content=resp.content, status_code=resp.status_code, media_type="application/json")
+        return Response(content=resp.content, status_code=resp.status_code, media_type="application/json", headers={"Cache-Control": "private, no-store"})
     except Exception as e:
         logger.warning(f"Proxy error for sessions: {e}")
         raise HTTPException(status_code=502, detail=f"Sessions proxy error: {str(e)}")

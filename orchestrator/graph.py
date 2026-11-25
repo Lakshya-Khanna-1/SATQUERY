@@ -77,38 +77,40 @@ def classify_task(state: AgentState) -> AgentState:
         task_type = "change_vqa"
         input_modality = "bitemporal_pair"
         
-        # If user provided 1 image and requested historical change, auto-fetch historical baseline
-        import re
-        from data.satellite_fetcher import fetch_satellite_pair_by_coords
-        
-        meta = state.get("metadata", {}) or {}
-        lat = meta.get("lat")
-        lon = meta.get("lon")
-        radius_km = meta.get("radius_km", 5.0)
-        years_ago = meta.get("years_ago", 5)
+        if img_count == 1:
+            # If user provided 1 image and requested historical change, auto-fetch historical baseline
+            import re
+            from data.satellite_fetcher import fetch_satellite_pair_by_coords
 
-        if lat is None or lon is None:
-            coord_match = re.search(r"(\d+\.\d+)\s*°?\s*N?.*,?\s*(\d+\.\d+)\s*°?\s*E?", query)
-            if coord_match:
-                try:
-                    lat = float(coord_match.group(1))
-                    lon = float(coord_match.group(2))
-                except Exception:
-                    lat, lon = (23.0225, 72.5714)
-            else:
-                lat, lon = (23.0225, 72.5714)
-        
-        years_match = re.search(r"(\d+)\s*years?", q_lower)
-        if years_match:
-            years_ago = int(years_match.group(1))
-        
-        logger.info(f"Auto-fetching historical satellite baseline for coordinates ({lat}, {lon}), {years_ago} years ago...")
-        satellite_data = fetch_satellite_pair_by_coords(lat=float(lat), lon=float(lon), radius_km=float(radius_km), years_ago=int(years_ago))
-        
-        # Historical baseline is Time 1, present observation is Time 2
-        present_img = images[0] if img_count > 0 else satellite_data["time2_base64"]
-        images = [satellite_data["time1_base64"], present_img]
-        state["images"] = images
+            meta = state.get("metadata", {}) or {}
+            lat = meta.get("lat")
+            lon = meta.get("lon")
+            radius_km = meta.get("radius_km", 5.0)
+            years_ago = meta.get("years_ago", 5)
+
+            if lat is None or lon is None:
+                coord_match = re.search(r"(\d+\.\d+)\s*°?\s*N?.*,?\s*(\d+\.\d+)\s*°?\s*E?", query)
+                if coord_match:
+                    try:
+                        lat = float(coord_match.group(1))
+                        lon = float(coord_match.group(2))
+                    except Exception:
+                        lat, lon = None, None
+                else:
+                    lat, lon = None, None
+
+            if lat is not None and lon is not None:
+                years_match = re.search(r"(\d+)\s*years?", q_lower)
+                if years_match:
+                    years_ago = int(years_match.group(1))
+
+                logger.info(f"Auto-fetching historical satellite baseline for coordinates ({lat}, {lon}), {years_ago} years ago...")
+                satellite_data = fetch_satellite_pair_by_coords(lat=float(lat), lon=float(lon), radius_km=float(radius_km), years_ago=int(years_ago))
+
+                # Historical baseline is Time 1, present observation is Time 2
+                present_img = images[0] if img_count > 0 else satellite_data["time2_base64"]
+                images = [satellite_data["time1_base64"], present_img]
+                state["images"] = images
     elif img_count >= 2:
         # Default for 2 images without specific fusion keywords
         task_type = "change_vqa"
@@ -232,6 +234,10 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
         }
         
         try:
+            if os.environ.get("SATQUERY_WORKER_TOKEN"):
+                from orchestrator.gpu_relay import infer
+                responses.append(infer(spec, payload))
+                continue
             res = requests.post(f"{service_url}/infer", json=payload, timeout=60)
             if res.status_code == 200:
                 data = res.json()
@@ -249,7 +255,7 @@ def select_and_call_specialist(state: AgentState) -> AgentState:
             logger.error(f"Failed to connect to {spec} ({service_url}): {e}")
             responses.append({
                 "specialist": spec,
-                "answer": f"Service Unreachable: Unable to connect to {spec} at {service_url}. The service may be offline or initializing ({e}).",
+                "answer": f"The {spec} service could not complete the request ({e}).",
                 "confidence": 0.0,
                 "evidence_image_base64": None,
                 "error": True

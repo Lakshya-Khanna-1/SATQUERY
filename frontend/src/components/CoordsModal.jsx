@@ -1,3 +1,4 @@
+import { apiUrl } from '../api';
 import React, { useState, useEffect, useRef } from 'react';
 import { Globe, MapPin, Map, Navigation, Check, X, Layers, RefreshCw, Compass } from 'lucide-react';
 
@@ -274,9 +275,7 @@ export default function CoordsModal({ isOpen, onClose, onApplyCoords, activeTab 
     setFetching(true);
     setErrorMsg("");
 
-    const targetUrl = activeTab === "n8n"
-      ? "http://127.0.0.1:5678/fetch-coords-satellite"
-      : "http://127.0.0.1:8000/fetch-coords-satellite";
+    const targetUrl = apiUrl(activeTab, "/fetch-coords-satellite");
 
     try {
       // First try backend satellite fetcher
